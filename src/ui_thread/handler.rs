@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use masonry::app::{RenderRoot, RenderRootSignal};
-use masonry::core::{NewWidget, WidgetId, WidgetTag};
+use masonry::core::{NewWidget, Properties, StyleProperty, WidgetId, WidgetOptions, WidgetTag};
+use masonry::parley::style::{FontFamily, FontStack, GenericFamily};
+use masonry::peniko::Color;
+use masonry::properties::ContentColor;
 use masonry::widgets::{Button, Flex, Label};
 use masonry_winit::app::WindowId;
 use winit::dpi::PhysicalSize;
@@ -125,8 +128,17 @@ pub fn handle_js_command(
 
             match &kind {
                 WidgetKind::Label => {
-                    let label = Label::new("");
-                    let new_widget = NewWidget::new_with_id(label, widget_id);
+                    let label = Label::new("[Label]")
+                        .with_style(StyleProperty::FontSize(30.0))
+                        .with_style(StyleProperty::FontStack(FontStack::Single(
+                            FontFamily::Generic(GenericFamily::SansSerif),
+                        )));
+                    let new_widget = NewWidget::new_with(
+                        label,
+                        widget_id,
+                        WidgetOptions::default(),
+                        Properties::new().with(ContentColor::new(Color::WHITE)),
+                    );
                     if add_to_parent(render_root, widget_manager, &parent_id, new_widget) {
                         widget_manager.widgets.insert(
                             id,
@@ -141,8 +153,18 @@ pub fn handle_js_command(
                 }
 
                 WidgetKind::Button => {
-                    let button = Button::new(NewWidget::new(Label::new("Button")));
-                    let new_widget = NewWidget::new_with_id(button, widget_id);
+                    let label = Label::new("Button")
+                        .with_style(StyleProperty::FontSize(20.0))
+                        .with_style(StyleProperty::FontStack(FontStack::Single(
+                            FontFamily::Generic(GenericFamily::SansSerif),
+                        )));
+                    let button = Button::new(NewWidget::new(label));
+                    let new_widget = NewWidget::new_with(
+                        button,
+                        widget_id,
+                        WidgetOptions::default(),
+                        Properties::new().with(ContentColor::new(Color::WHITE)),
+                    );
                     if add_to_parent(render_root, widget_manager, &parent_id, new_widget) {
                         widget_manager.widgets.insert(
                             id,
@@ -179,8 +201,17 @@ pub fn handle_js_command(
                         "[UI] Widget kind {:?} not yet implemented, creating Label as fallback",
                         kind
                     );
-                    let label = Label::new(format!("[{:?}]", kind));
-                    let new_widget = NewWidget::new_with_id(label, widget_id);
+                    let label = Label::new(format!("[{:?}]", kind))
+                        .with_style(StyleProperty::FontSize(20.0))
+                        .with_style(StyleProperty::FontStack(FontStack::Single(
+                            FontFamily::Generic(GenericFamily::SansSerif),
+                        )));
+                    let new_widget = NewWidget::new_with(
+                        label,
+                        widget_id,
+                        WidgetOptions::default(),
+                        Properties::new().with(ContentColor::new(Color::WHITE)),
+                    );
                     if add_to_parent(render_root, widget_manager, &parent_id, new_widget) {
                         widget_manager.widgets.insert(
                             id,

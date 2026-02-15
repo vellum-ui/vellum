@@ -62,6 +62,15 @@
 
             export LIBCLANG_PATH="${pkgs.libclang.lib}/lib"
 
+            # Configure FONTCONFIG_FILE to include system fonts
+            # This is crucial for GUI apps to find fonts in a pure shell
+            export FONTCONFIG_FILE=${pkgs.makeFontsConf { fontDirectories = [
+              pkgs.dejavu_fonts
+              pkgs.liberation_ttf
+              pkgs.noto-fonts
+              pkgs.noto-fonts-color-emoji
+            ]; }}
+
             # Set LD_LIBRARY_PATH so that winit/tao/wgpu can find system libraries
             export LD_LIBRARY_PATH=${
               pkgs.lib.makeLibraryPath (
