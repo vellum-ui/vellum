@@ -3,17 +3,19 @@
 // Set window title
 appjs.window.setTitle("Counter App");
 
-// Structure:
-// - Title Label
-// - Counter Label
-// - Buttons (Flex container?) - wait, no horizontal layout easy, so vertical stack is fine.
+// Create a root column that fills the window
+appjs.column("root", null, {
+    gap: 12,
+    padding: 20,
+    crossAxisAlignment: "center",
+});
 
-appjs.ui.createWidget("header", "Label", null, "Simple Counter App");
+appjs.label("header", "root", "Simple Counter App", { fontSize: 24, fontWeight: 700 });
+appjs.label("countLabel", "root", "Count: 0", { fontSize: 36, fontWeight: 900 });
 
-appjs.ui.createWidget("countLabel", "Label", null, "Count: 0");
-
-appjs.ui.createWidget("incBtn", "Button", null, "Increment");
-appjs.ui.createWidget("decBtn", "Button", null, "Decrement");
+appjs.row("btnRow", "root", { gap: 10 });
+appjs.button("incBtn", "btnRow", "Increment");
+appjs.button("decBtn", "btnRow", "Decrement");
 
 let count = 0;
 

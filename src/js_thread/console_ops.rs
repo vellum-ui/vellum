@@ -39,6 +39,7 @@ function formatArgs(args) {
         if (typeof arg === "symbol") return arg.toString();
         if (typeof arg === "bigint") return arg.toString() + "n";
         if (typeof arg === "function") return `[Function: ${arg.name || "anonymous"}]`;
+        if (arg instanceof Error) return `${arg.constructor.name}: ${arg.message}\n${arg.stack || ""}`;
         try {
             return JSON.stringify(arg, null, 2);
         } catch {

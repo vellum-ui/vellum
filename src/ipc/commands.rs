@@ -6,12 +6,13 @@ pub enum JsCommand {
     /// Set the window title
     SetTitle(String),
 
-    /// Create a new widget
+    /// Create a new widget with optional styling
     CreateWidget {
         id: String,
         kind: WidgetKind,
         parent_id: Option<String>,
         text: Option<String>,
+        style: Option<WidgetStyle>,
     },
 
     /// Update an existing widget
@@ -28,6 +29,22 @@ pub enum JsCommand {
 
     /// Set widget visibility
     SetWidgetVisible { id: String, visible: bool },
+
+    /// Apply style to an existing widget
+    SetWidgetStyle { id: String, style: WidgetStyle },
+
+    /// Set a single style property on a widget
+    SetStyleProperty {
+        id: String,
+        property: String,
+        value: String,
+    },
+
+    /// Set progress on a ProgressBar (0.0 to 1.0)
+    SetWidgetValue { id: String, value: f64 },
+
+    /// Set whether a checkbox is checked
+    SetWidgetChecked { id: String, checked: bool },
 
     /// Request window resize
     ResizeWindow { width: u32, height: u32 },
@@ -49,9 +66,131 @@ pub enum WidgetKind {
     Button,
     TextInput,
     TextArea,
-    Container,
+    Checkbox,
     Flex,
+    Container,
+    SizedBox,
+    ProgressBar,
+    Spinner,
+    Slider,
+    Prose,
+    Grid,
+    ZStack,
+    Portal,
     Custom(String),
+}
+
+/// Comprehensive styling that can be applied to widgets
+#[derive(Debug, Clone, Default)]
+pub struct WidgetStyle {
+    // -- Text styles --
+    pub font_size: Option<f32>,
+    pub font_weight: Option<f32>,
+    pub font_style: Option<FontStyleValue>,
+    pub font_family: Option<String>,
+    pub color: Option<ColorValue>,
+    pub letter_spacing: Option<f32>,
+    pub line_height: Option<f32>,
+    pub word_spacing: Option<f32>,
+    pub underline: Option<bool>,
+    pub strikethrough: Option<bool>,
+    pub text_align: Option<TextAlignValue>,
+
+    // -- Box / layout styles --
+    pub background: Option<ColorValue>,
+    pub border_color: Option<ColorValue>,
+    pub border_width: Option<f64>,
+    pub corner_radius: Option<f64>,
+    pub padding: Option<PaddingValue>,
+    pub width: Option<f64>,
+    pub height: Option<f64>,
+
+    // -- Flex-specific styles --
+    pub direction: Option<FlexDirection>,
+    pub cross_axis_alignment: Option<CrossAlign>,
+    pub main_axis_alignment: Option<MainAlign>,
+    pub gap: Option<f64>,
+    pub flex: Option<f64>,
+    pub must_fill_main_axis: Option<bool>,
+
+    // -- Slider-specific --
+    pub min_value: Option<f64>,
+    pub max_value: Option<f64>,
+    pub step: Option<f64>,
+
+    // -- Checkbox --
+    pub checked: Option<bool>,
+
+    // -- ProgressBar --
+    pub progress: Option<f64>,
+
+    // -- TextInput --
+    pub placeholder: Option<String>,
+}
+
+/// Represents a parsed color value
+#[derive(Debug, Clone)]
+pub enum ColorValue {
+    /// RGBA color (0-255 per channel)
+    Rgba { r: u8, g: u8, b: u8, a: u8 },
+    /// Named color string
+    Named(String),
+}
+
+/// Font style (normal vs italic)
+#[derive(Debug, Clone)]
+pub enum FontStyleValue {
+    Normal,
+    Italic,
+}
+
+/// Text alignment
+#[derive(Debug, Clone)]
+pub enum TextAlignValue {
+    Start,
+    Center,
+    End,
+    Justify,
+}
+
+/// Flex direction
+#[derive(Debug, Clone)]
+pub enum FlexDirection {
+    Row,
+    Column,
+}
+
+/// Cross axis alignment for Flex
+#[derive(Debug, Clone)]
+pub enum CrossAlign {
+    Start,
+    Center,
+    End,
+    Fill,
+    Baseline,
+}
+
+/// Main axis alignment for Flex
+#[derive(Debug, Clone)]
+pub enum MainAlign {
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
+
+/// Padding (uniform or per-side)
+#[derive(Debug, Clone)]
+pub enum PaddingValue {
+    Uniform(f64),
+    Sides {
+        top: f64,
+        right: f64,
+        bottom: f64,
+        left: f64,
+    },
 }
 
 /// Possible widget updates
@@ -60,7 +199,9 @@ pub enum WidgetUpdate {
     Text(String),
     Enabled(bool),
     Visible(bool),
-    Style(String, String),
+    Style(WidgetStyle),
+    Value(f64),
+    Checked(bool),
 }
 
 /// Log levels for debugging
@@ -80,5 +221,131 @@ pub struct JsCommandAction(pub JsCommand);
 impl fmt::Debug for JsCommandAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "JsCommandAction({:?})", self.0)
+    }
+}
+
+// ── Helpers for parsing style from JSON-like data ──
+
+impl ColorValue {
+    /// Parse a color string like "#RRGGBB", "#RRGGBBAA", "rgb(r,g,b)", "rgba(r,g,b,a)",
+    /// or named CSS colors.
+    pub fn parse(s: &str) -> Option<Self> {
+        let s = s.trim();
+        if s.starts_with('#') {
+            let hex = &s[1..];
+            match hex.len() {
+                6 => {
+                    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+                    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+                    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+                    Some(ColorValue::Rgba { r, g, b, a: 255 })
+                }
+                8 => {
+                    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+                    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+                    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+                    let a = u8::from_str_radix(&hex[6..8], 16).ok()?;
+                    Some(ColorValue::Rgba { r, g, b, a })
+                }
+                _ => None,
+            }
+        } else if s.starts_with("rgb(") || s.starts_with("rgba(") {
+            let inner = s
+                .trim_start_matches("rgba(")
+                .trim_start_matches("rgb(")
+                .trim_end_matches(')');
+            let parts: Vec<&str> = inner.split(',').collect();
+            if parts.len() >= 3 {
+                let r = parts[0].trim().parse::<u8>().ok()?;
+                let g = parts[1].trim().parse::<u8>().ok()?;
+                let b = parts[2].trim().parse::<u8>().ok()?;
+                let a = if parts.len() >= 4 {
+                    let af = parts[3].trim().parse::<f32>().ok()?;
+                    (af * 255.0) as u8
+                } else {
+                    255
+                };
+                Some(ColorValue::Rgba { r, g, b, a })
+            } else {
+                None
+            }
+        } else {
+            // Try known named colors
+            match s.to_lowercase().as_str() {
+                "white" => Some(ColorValue::Rgba {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                }),
+                "black" => Some(ColorValue::Rgba {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                }),
+                "red" => Some(ColorValue::Rgba {
+                    r: 255,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                }),
+                "green" => Some(ColorValue::Rgba {
+                    r: 0,
+                    g: 128,
+                    b: 0,
+                    a: 255,
+                }),
+                "blue" => Some(ColorValue::Rgba {
+                    r: 0,
+                    g: 0,
+                    b: 255,
+                    a: 255,
+                }),
+                "yellow" => Some(ColorValue::Rgba {
+                    r: 255,
+                    g: 255,
+                    b: 0,
+                    a: 255,
+                }),
+                "cyan" => Some(ColorValue::Rgba {
+                    r: 0,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                }),
+                "magenta" => Some(ColorValue::Rgba {
+                    r: 255,
+                    g: 0,
+                    b: 255,
+                    a: 255,
+                }),
+                "orange" => Some(ColorValue::Rgba {
+                    r: 255,
+                    g: 165,
+                    b: 0,
+                    a: 255,
+                }),
+                "purple" => Some(ColorValue::Rgba {
+                    r: 128,
+                    g: 0,
+                    b: 128,
+                    a: 255,
+                }),
+                "gray" | "grey" => Some(ColorValue::Rgba {
+                    r: 128,
+                    g: 128,
+                    b: 128,
+                    a: 255,
+                }),
+                "transparent" => Some(ColorValue::Rgba {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                }),
+                other => Some(ColorValue::Named(other.to_string())),
+            }
+        }
     }
 }

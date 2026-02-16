@@ -54,7 +54,7 @@ pub fn run_ui_blocking(
         .with_min_inner_size(LogicalSize::new(400.0, 300.0))
         .with_inner_size(window_size);
 
-    let driver = AppJsDriver::new(window_id, event_sender);
+    let driver = AppJsDriver::new(event_sender);
     let main_widget = create_initial_ui();
 
     masonry_winit::app::run_with(

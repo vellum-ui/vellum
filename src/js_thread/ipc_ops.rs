@@ -6,7 +6,9 @@ use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 
 use crate::ipc::{
-    JsCommand, JsCommandSender, LogLevel, UiEvent, UiEventReceiver, WidgetActionKind, WidgetKind,
+    ColorValue, CrossAlign, FlexDirection, FontStyleValue, JsCommand, JsCommandSender, LogLevel,
+    MainAlign, PaddingValue, TextAlignValue, UiEvent, UiEventReceiver, WidgetActionKind,
+    WidgetKind, WidgetStyle,
 };
 
 /// Wrapper so we can store the UiEventReceiver in OpState (needs Arc<Mutex<>> for spawn_blocking)
@@ -25,7 +27,313 @@ pub fn op_set_title(state: &mut OpState, #[string] title: &str) -> Result<(), Js
     send_command(state, JsCommand::SetTitle(title.to_string()))
 }
 
-/// Create a widget
+/// Parse a WidgetKind from a string
+fn parse_widget_kind(kind: &str) -> WidgetKind {
+    match kind {
+        "Label" | "label" => WidgetKind::Label,
+        "Button" | "button" => WidgetKind::Button,
+        "TextInput" | "textInput" | "text_input" => WidgetKind::TextInput,
+        "TextArea" | "textArea" | "text_area" => WidgetKind::TextArea,
+        "Checkbox" | "checkbox" => WidgetKind::Checkbox,
+        "Container" | "container" => WidgetKind::Container,
+        "Flex" | "flex" => WidgetKind::Flex,
+        "SizedBox" | "sizedBox" | "sized_box" | "box" => WidgetKind::SizedBox,
+        "ProgressBar" | "progressBar" | "progress_bar" | "progress" => WidgetKind::ProgressBar,
+        "Spinner" | "spinner" | "loading" => WidgetKind::Spinner,
+        "Slider" | "slider" | "range" => WidgetKind::Slider,
+        "Prose" | "prose" => WidgetKind::Prose,
+        "Grid" | "grid" => WidgetKind::Grid,
+        "ZStack" | "zstack" | "z_stack" | "stack" => WidgetKind::ZStack,
+        "Portal" | "portal" | "scroll" => WidgetKind::Portal,
+        other => WidgetKind::Custom(other.to_string()),
+    }
+}
+
+/// Parse a JSON-encoded style object into WidgetStyle
+fn parse_style_json(json_str: &str) -> Option<WidgetStyle> {
+    // We do manual JSON parsing since we don't have serde in scope.
+    // The JS side sends a flat JSON object with known keys.
+    let json_str = json_str.trim();
+    if json_str.is_empty() || json_str == "{}" || json_str == "null" {
+        return None;
+    }
+
+    let mut style = WidgetStyle::default();
+
+    // Simple key-value extraction from JSON. Only handles flat objects with string/number/bool values.
+    let inner = json_str
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .trim();
+    if inner.is_empty() {
+        return None;
+    }
+
+    // Parse key-value pairs from the JSON string
+    let mut has_any = false;
+    for pair in split_json_pairs(inner) {
+        let pair = pair.trim();
+        if pair.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = parse_json_kv(pair) {
+            has_any = true;
+            apply_style_property(&mut style, &key, &value);
+        }
+    }
+
+    if has_any { Some(style) } else { None }
+}
+
+/// Split JSON pairs at top-level commas (not inside nested braces/strings)
+fn split_json_pairs(s: &str) -> Vec<&str> {
+    let mut pairs = Vec::new();
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape = false;
+    let mut start = 0;
+
+    for (i, c) in s.char_indices() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        match c {
+            '\\' if in_string => escape = true,
+            '"' => in_string = !in_string,
+            '{' | '[' if !in_string => depth += 1,
+            '}' | ']' if !in_string => depth -= 1,
+            ',' if !in_string && depth == 0 => {
+                pairs.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if start < s.len() {
+        pairs.push(&s[start..]);
+    }
+    pairs
+}
+
+/// Parse a "key": value pair
+fn parse_json_kv(pair: &str) -> Option<(String, String)> {
+    let colon_pos = pair.find(':')?;
+    let key = pair[..colon_pos]
+        .trim()
+        .trim_matches('"')
+        .trim()
+        .to_string();
+    let value = pair[colon_pos + 1..].trim().to_string();
+    Some((key, value))
+}
+
+/// Unquote a JSON string value
+fn unquote(s: &str) -> String {
+    let s = s.trim();
+    if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+        s[1..s.len() - 1].replace("\\\"", "\"").replace("\\\\", "\\")
+    } else {
+        s.to_string()
+    }
+}
+
+/// Apply a single style property to a WidgetStyle
+fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
+    let value = value.trim();
+    match key {
+        // Text styles
+        "fontSize" | "font_size" => {
+            style.font_size = value.trim_matches('"').parse::<f32>().ok();
+        }
+        "fontWeight" | "font_weight" => {
+            style.font_weight = value.trim_matches('"').parse::<f32>().ok().or_else(|| {
+                match unquote(value).to_lowercase().as_str() {
+                    "thin" => Some(100.0),
+                    "extralight" | "extra-light" => Some(200.0),
+                    "light" => Some(300.0),
+                    "normal" | "regular" => Some(400.0),
+                    "medium" => Some(500.0),
+                    "semibold" | "semi-bold" => Some(600.0),
+                    "bold" => Some(700.0),
+                    "extrabold" | "extra-bold" => Some(800.0),
+                    "black" => Some(900.0),
+                    _ => None,
+                }
+            });
+        }
+        "fontStyle" | "font_style" => {
+            style.font_style = match unquote(value).to_lowercase().as_str() {
+                "italic" => Some(FontStyleValue::Italic),
+                "normal" => Some(FontStyleValue::Normal),
+                _ => None,
+            };
+        }
+        "fontFamily" | "font_family" => {
+            style.font_family = Some(unquote(value));
+        }
+        "color" => {
+            style.color = ColorValue::parse(&unquote(value));
+        }
+        "letterSpacing" | "letter_spacing" => {
+            style.letter_spacing = value.trim_matches('"').parse::<f32>().ok();
+        }
+        "lineHeight" | "line_height" => {
+            style.line_height = value.trim_matches('"').parse::<f32>().ok();
+        }
+        "wordSpacing" | "word_spacing" => {
+            style.word_spacing = value.trim_matches('"').parse::<f32>().ok();
+        }
+        "underline" => {
+            style.underline = parse_json_bool(value);
+        }
+        "strikethrough" => {
+            style.strikethrough = parse_json_bool(value);
+        }
+        "textAlign" | "text_align" => {
+            style.text_align = match unquote(value).to_lowercase().as_str() {
+                "start" | "left" => Some(TextAlignValue::Start),
+                "center" => Some(TextAlignValue::Center),
+                "end" | "right" => Some(TextAlignValue::End),
+                "justify" => Some(TextAlignValue::Justify),
+                _ => None,
+            };
+        }
+
+        // Box styles
+        "background" | "backgroundColor" | "background_color" | "bg" => {
+            style.background = ColorValue::parse(&unquote(value));
+        }
+        "borderColor" | "border_color" => {
+            style.border_color = ColorValue::parse(&unquote(value));
+        }
+        "borderWidth" | "border_width" => {
+            style.border_width = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "cornerRadius" | "corner_radius" | "borderRadius" | "border_radius" => {
+            style.corner_radius = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "padding" => {
+            if let Ok(v) = value.trim_matches('"').parse::<f64>() {
+                style.padding = Some(PaddingValue::Uniform(v));
+            } else {
+                // Try parsing as {top, right, bottom, left} object
+                let inner = unquote(value);
+                if inner.contains(',') {
+                    let parts: Vec<f64> = inner
+                        .split(',')
+                        .filter_map(|p| p.trim().parse::<f64>().ok())
+                        .collect();
+                    match parts.len() {
+                        1 => style.padding = Some(PaddingValue::Uniform(parts[0])),
+                        2 => {
+                            style.padding = Some(PaddingValue::Sides {
+                                top: parts[0],
+                                right: parts[1],
+                                bottom: parts[0],
+                                left: parts[1],
+                            })
+                        }
+                        4 => {
+                            style.padding = Some(PaddingValue::Sides {
+                                top: parts[0],
+                                right: parts[1],
+                                bottom: parts[2],
+                                left: parts[3],
+                            })
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        "width" => {
+            style.width = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "height" => {
+            style.height = value.trim_matches('"').parse::<f64>().ok();
+        }
+
+        // Flex styles
+        "direction" | "flexDirection" | "flex_direction" => {
+            style.direction = match unquote(value).to_lowercase().as_str() {
+                "row" | "horizontal" => Some(FlexDirection::Row),
+                "column" | "vertical" => Some(FlexDirection::Column),
+                _ => None,
+            };
+        }
+        "crossAxisAlignment" | "cross_axis_alignment" | "alignItems" | "align_items" => {
+            style.cross_axis_alignment = match unquote(value).to_lowercase().as_str() {
+                "start" | "flex-start" => Some(CrossAlign::Start),
+                "center" => Some(CrossAlign::Center),
+                "end" | "flex-end" => Some(CrossAlign::End),
+                "fill" | "stretch" => Some(CrossAlign::Fill),
+                "baseline" => Some(CrossAlign::Baseline),
+                _ => None,
+            };
+        }
+        "mainAxisAlignment" | "main_axis_alignment" | "justifyContent" | "justify_content" => {
+            style.main_axis_alignment = match unquote(value).to_lowercase().as_str() {
+                "start" | "flex-start" => Some(MainAlign::Start),
+                "center" => Some(MainAlign::Center),
+                "end" | "flex-end" => Some(MainAlign::End),
+                "space-between" | "spaceBetween" => Some(MainAlign::SpaceBetween),
+                "space-around" | "spaceAround" => Some(MainAlign::SpaceAround),
+                "space-evenly" | "spaceEvenly" => Some(MainAlign::SpaceEvenly),
+                _ => None,
+            };
+        }
+        "gap" => {
+            style.gap = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "flex" | "flexGrow" | "flex_grow" => {
+            style.flex = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "mustFillMainAxis" | "must_fill_main_axis" => {
+            style.must_fill_main_axis = parse_json_bool(value);
+        }
+
+        // Widget-specific
+        "minValue" | "min_value" | "min" => {
+            style.min_value = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "maxValue" | "max_value" | "max" => {
+            style.max_value = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "step" => {
+            style.step = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "checked" => {
+            style.checked = parse_json_bool(value);
+        }
+        "progress" | "value" => {
+            style.progress = value.trim_matches('"').parse::<f64>().ok();
+        }
+        "placeholder" => {
+            style.placeholder = Some(unquote(value));
+        }
+
+        _ => {
+            eprintln!("[JS] Unknown style property: {} = {}", key, value);
+        }
+    }
+}
+
+fn parse_json_bool(s: &str) -> Option<bool> {
+    let s = s.trim().trim_matches('"');
+    match s {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+/// Public wrapper for apply_style_property (used by handler.rs for SetStyleProperty)
+pub fn apply_style_property_public(style: &mut WidgetStyle, key: &str, value: &str) {
+    apply_style_property(style, key, value);
+}
+
+/// Create a widget with optional style (JSON string)
 #[op2]
 pub fn op_create_widget(
     state: &mut OpState,
@@ -33,16 +341,10 @@ pub fn op_create_widget(
     #[string] kind: &str,
     #[string] parent_id: Option<String>,
     #[string] text: Option<String>,
+    #[string] style_json: Option<String>,
 ) -> Result<(), JsErrorBox> {
-    let widget_kind = match kind {
-        "Label" | "label" => WidgetKind::Label,
-        "Button" | "button" => WidgetKind::Button,
-        "TextInput" | "textInput" | "text_input" => WidgetKind::TextInput,
-        "TextArea" | "textArea" | "text_area" => WidgetKind::TextArea,
-        "Container" | "container" => WidgetKind::Container,
-        "Flex" | "flex" => WidgetKind::Flex,
-        other => WidgetKind::Custom(other.to_string()),
-    };
+    let widget_kind = parse_widget_kind(kind);
+    let style = style_json.as_deref().and_then(parse_style_json);
     send_command(
         state,
         JsCommand::CreateWidget {
@@ -50,6 +352,7 @@ pub fn op_create_widget(
             kind: widget_kind,
             parent_id,
             text,
+            style,
         },
     )
 }
@@ -88,6 +391,73 @@ pub fn op_set_widget_visible(
         JsCommand::SetWidgetVisible {
             id: id.to_string(),
             visible,
+        },
+    )
+}
+
+/// Set widget style from a JSON string
+#[op2(fast)]
+pub fn op_set_widget_style(
+    state: &mut OpState,
+    #[string] id: &str,
+    #[string] style_json: &str,
+) -> Result<(), JsErrorBox> {
+    let style = parse_style_json(style_json).unwrap_or_default();
+    send_command(
+        state,
+        JsCommand::SetWidgetStyle {
+            id: id.to_string(),
+            style,
+        },
+    )
+}
+
+/// Set a single style property
+#[op2(fast)]
+pub fn op_set_style_property(
+    state: &mut OpState,
+    #[string] id: &str,
+    #[string] property: &str,
+    #[string] value: &str,
+) -> Result<(), JsErrorBox> {
+    send_command(
+        state,
+        JsCommand::SetStyleProperty {
+            id: id.to_string(),
+            property: property.to_string(),
+            value: value.to_string(),
+        },
+    )
+}
+
+/// Set a numeric value on a widget (e.g., progress bar progress, slider value)
+#[op2(fast)]
+pub fn op_set_widget_value(
+    state: &mut OpState,
+    #[string] id: &str,
+    value: f64,
+) -> Result<(), JsErrorBox> {
+    send_command(
+        state,
+        JsCommand::SetWidgetValue {
+            id: id.to_string(),
+            value,
+        },
+    )
+}
+
+/// Set checkbox checked state
+#[op2(fast)]
+pub fn op_set_widget_checked(
+    state: &mut OpState,
+    #[string] id: &str,
+    checked: bool,
+) -> Result<(), JsErrorBox> {
+    send_command(
+        state,
+        JsCommand::SetWidgetChecked {
+            id: id.to_string(),
+            checked,
         },
     )
 }
@@ -199,24 +569,41 @@ fn serialize_event(event: &UiEvent) -> String {
             )
         }
         UiEvent::WidgetAction { widget_id, action } => {
-            let action_str = match action {
-                WidgetActionKind::Click => "click".to_string(),
-                WidgetActionKind::DoubleClick => "doubleClick".to_string(),
+            match action {
+                WidgetActionKind::Click => {
+                    format!(
+                        r#"{{"type":"widgetAction","widgetId":"{}","action":"click"}}"#,
+                        escape_json_string(widget_id),
+                    )
+                }
+                WidgetActionKind::DoubleClick => {
+                    format!(
+                        r#"{{"type":"widgetAction","widgetId":"{}","action":"doubleClick"}}"#,
+                        escape_json_string(widget_id),
+                    )
+                }
                 WidgetActionKind::TextChanged(t) => {
-                    format!(r#"textChanged","value":"{}""#, escape_json_string(t))
+                    format!(
+                        r#"{{"type":"widgetAction","widgetId":"{}","action":"textChanged","value":"{}"}}"#,
+                        escape_json_string(widget_id),
+                        escape_json_string(t),
+                    )
                 }
                 WidgetActionKind::ValueChanged(v) => {
-                    format!(r#"valueChanged","value":{}"#, v)
+                    format!(
+                        r#"{{"type":"widgetAction","widgetId":"{}","action":"valueChanged","value":{}}}"#,
+                        escape_json_string(widget_id),
+                        v,
+                    )
                 }
                 WidgetActionKind::Custom(c) => {
-                    format!(r#"custom","value":"{}""#, escape_json_string(c))
+                    format!(
+                        r#"{{"type":"widgetAction","widgetId":"{}","action":"custom","value":"{}"}}"#,
+                        escape_json_string(widget_id),
+                        escape_json_string(c),
+                    )
                 }
-            };
-            format!(
-                r#"{{"type":"widgetAction","widgetId":"{}","action":"{}"}}"#,
-                escape_json_string(widget_id),
-                action_str,
-            )
+            }
         }
         UiEvent::WindowFocusChanged { focused } => {
             format!(r#"{{"type":"windowFocusChanged","focused":{}}}"#, focused)
@@ -242,6 +629,10 @@ deno_core::extension!(
         op_remove_widget,
         op_set_widget_text,
         op_set_widget_visible,
+        op_set_widget_style,
+        op_set_style_property,
+        op_set_widget_value,
+        op_set_widget_checked,
         op_resize_window,
         op_close_window,
         op_exit_app,
