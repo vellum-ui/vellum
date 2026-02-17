@@ -1,7 +1,7 @@
 {
   "name": "@appjs/solid-renderer",
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts"
