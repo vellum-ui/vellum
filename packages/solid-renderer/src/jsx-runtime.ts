@@ -1,4 +1,4 @@
-import { createComponent } from "npm:solid-js";
+import { createComponent } from "npm:solid-js@^1.9.0";
 import type { AppJsCommonProps } from "./index.ts";
 
 type JsxProps = Record<string, unknown> | null | undefined;

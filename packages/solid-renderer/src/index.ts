@@ -1,5 +1,5 @@
-import { createRenderEffect } from "npm:solid-js";
-import { createRenderer } from "npm:solid-js/universal";
+import { createRenderEffect } from "npm:solid-js@^1.9.0";
+import { createRenderer } from "npm:solid-js@^1.9.0/universal";
 
 export type AppJsStyle = Record<string, unknown>;
 
