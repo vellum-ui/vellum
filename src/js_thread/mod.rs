@@ -4,12 +4,13 @@
 mod console_ops;
 pub mod event_serializer;
 pub mod ipc_ops;
+mod module_loader;
 pub mod style_parser;
 
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use deno_core::{FsModuleLoader, JsRuntime, ModuleSpecifier, RuntimeOptions};
+use deno_core::{JsRuntime, ModuleSpecifier, RuntimeOptions};
 
 use crate::ipc::{JsCommand, JsThreadChannels, LogLevel};
 
@@ -62,10 +63,19 @@ async fn run_js_runtime(
 
     log("Initializing JS runtime...");
 
-    // Resolve the module path to a file:// URL
-    let module_path = std::path::Path::new(&config.main_module_path);
-    let main_module = ModuleSpecifier::from_file_path(module_path)
-        .map_err(|_| format!("Invalid module path: {}", config.main_module_path))?;
+    // Resolve the module specifier — supports file paths, https://, jsr:, npm:
+    let main_module = if config.main_module_path.starts_with("https://")
+        || config.main_module_path.starts_with("http://")
+        || config.main_module_path.starts_with("jsr:")
+        || config.main_module_path.starts_with("npm:")
+    {
+        ModuleSpecifier::parse(&config.main_module_path)
+            .map_err(|e| format!("Invalid module URL '{}': {}", config.main_module_path, e))?
+    } else {
+        let module_path = std::path::Path::new(&config.main_module_path);
+        ModuleSpecifier::from_file_path(module_path)
+            .map_err(|_| format!("Invalid module path: {}", config.main_module_path))?
+    };
 
     log(&format!("Loading module: {}", main_module));
 
@@ -79,13 +89,10 @@ async fn run_js_runtime(
         state.put(shared_receiver);
     }));
 
-    // Create the deno_core JsRuntime
+    // Create the deno_core JsRuntime with TypeScript-capable module loader
     let mut runtime = JsRuntime::new(RuntimeOptions {
-        module_loader: Some(Rc::new(FsModuleLoader)),
-        extensions: vec![
-            console_ops::appjs_console::init(),
-            ipc_ext,
-        ],
+        module_loader: Some(Rc::new(module_loader::AppJsModuleLoader::new())),
+        extensions: vec![console_ops::appjs_console::init(), ipc_ext],
         ..Default::default()
     });
 
