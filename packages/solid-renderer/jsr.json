@@ -1,0 +1,14 @@
+{
+  "name": "@appjs/solid-renderer",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "exports": {
+    ".": "./src/index.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts"
+  },
+  "publish": {
+    "include": [
+      "src/**/*.ts"
+    ]
+  }
+}

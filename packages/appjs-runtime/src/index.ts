@@ -29,8 +29,8 @@ export const window = {
 };
 
 export const body = {
-    setStyle: (style: AppJsStyle) => setWidgetStyle("__root__", style),
-    setStyleProperty: (property: string, value: string | number) =>
+    setStyle: (style: AppJsStyle): void => setWidgetStyle("__root__", style),
+    setStyleProperty: (property: string, value: string | number): void =>
         setStyleProperty("__root__", property, String(value)),
 };
 
@@ -41,7 +41,7 @@ export const ui = {
         parentId: string | null,
         text: string | null,
         style: AppJsStyle | null
-    ) => createWidget(id, kind, parentId ?? null, text ?? null, style ?? null),
+    ): void => createWidget(id, kind, parentId ?? null, text ?? null, style ?? null),
     removeWidget,
     setText: setWidgetText,
     setVisible: setWidgetVisible,
@@ -55,10 +55,10 @@ export const ui = {
 };
 
 export const log = {
-    debug: (msg: string) => writeLog("debug", msg),
-    info: (msg: string) => writeLog("info", msg),
-    warn: (msg: string) => writeLog("warn", msg),
-    error: (msg: string) => writeLog("error", msg),
+    debug: (msg: string): void => writeLog("debug", msg),
+    info: (msg: string): void => writeLog("info", msg),
+    warn: (msg: string): void => writeLog("warn", msg),
+    error: (msg: string): void => writeLog("error", msg),
 };
 
 export { events };

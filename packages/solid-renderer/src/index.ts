@@ -96,6 +96,25 @@ export interface AppJsHostText {
     widgetId: string;
 }
 
+export interface AppJsRenderer {
+    createRoot(parentWidgetId?: string | null): AppJsRoot;
+    createHostElement(tag: string): AppJsHostElement;
+    createHostText(value: string): AppJsHostText;
+    setHostProperty(
+        node: AppJsHostElement,
+        name: string,
+        value: unknown,
+        prev?: unknown
+    ): void;
+    appendHostNode(
+        parent: AppJsRoot | AppJsHostElement,
+        node: AppJsHostElement | AppJsHostText,
+        anchor?: AppJsHostElement | AppJsHostText | null
+    ): void;
+    render(code: () => unknown, options?: RenderOptions | AppJsRoot): AppJsRoot;
+    dispose(): void;
+}
+
 const DEFAULT_PARENT_ID: string | null = null;
 const EVENT_WILDCARD = "widgetAction";
 
@@ -269,7 +288,7 @@ function isReactiveAccessorProp(name: string, value: unknown): value is () => un
     return true;
 }
 
-export function createAppJsRenderer(runtime: AppJsRuntime) {
+export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
     const widgetNodeById = new Map<string, HostElement>();
     const jsxNodeMap = new WeakMap<object, HostNode>();
     let fallbackId = 0;
