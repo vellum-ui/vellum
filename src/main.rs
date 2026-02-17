@@ -23,6 +23,14 @@ use ui_thread::{prepare_ui, run_ui_blocking};
 fn main() {
     println!("AppJS Starting...");
 
+    #[cfg(target_os = "windows")]
+    if std::env::var_os("WGPU_BACKEND").is_none() {
+        unsafe {
+            std::env::set_var("WGPU_BACKEND", "gl");
+        }
+        println!("[Main] WGPU backend defaulted to OpenGL (WGPU_BACKEND=gl)");
+    }
+
     // Parse CLI arguments: expect a JS/TS file path as the first argument
     let args: Vec<String> = std::env::args().collect();
     let script_path = match args.get(1) {

@@ -5,11 +5,9 @@ use std::sync::{Arc, Mutex};
 use deno_core::{OpState, op2};
 use deno_error::JsErrorBox;
 
-use crate::ipc::{
-    JsCommand, JsCommandSender, LogLevel, UiEventReceiver, WidgetKind,
-};
-use super::style_parser::{parse_style_json, apply_style_property};
 use super::event_serializer::serialize_event;
+use super::style_parser::{apply_style_property, parse_style_json};
+use crate::ipc::{JsCommand, JsCommandSender, LogLevel, UiEventReceiver, WidgetKind};
 
 /// Wrapper so we can store the UiEventReceiver in OpState (needs Arc<Mutex<>> for spawn_blocking)
 pub struct SharedEventReceiver(pub Arc<Mutex<UiEventReceiver>>);
@@ -267,5 +265,5 @@ deno_core::extension!(
         op_wait_for_event,
     ],
     esm_entry_point = "ext:appjs_ipc/runtime.js",
-    esm = ["ext:appjs_ipc/runtime.js" = "src/js_thread/appjs.js"],
+    esm = ["ext:appjs_ipc/runtime.js" = "packages/appjs-runtime/src/runtime.js"],
 );

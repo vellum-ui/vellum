@@ -1,4 +1,5 @@
 // Styled Counter App Example — demonstrates the new styling API
+import * as appjs from "../packages/appjs-runtime/src/index.ts";
 
 appjs.window.setTitle("Styled Counter");
 

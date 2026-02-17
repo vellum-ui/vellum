@@ -1,4 +1,5 @@
 // Counter App Example
+import * as appjs from "../packages/appjs-runtime/src/index.ts";
 
 // Set window title
 appjs.window.setTitle("Counter App");

@@ -4,8 +4,8 @@ use masonry_winit::app::{AppDriver, DriverCtx, WindowId};
 
 use crate::ipc::{JsCommandAction, UiEvent, UiEventSender, WidgetActionKind};
 
-use super::widget_manager::{WidgetManager, WidgetInfo};
 use super::handler::handle_js_command;
+use super::widget_manager::{WidgetInfo, WidgetManager};
 
 /// Application driver that bridges JS runtime commands with the masonry UI.
 ///

@@ -1,6 +1,7 @@
 // Counter App Example — TypeScript Version
 // Demonstrates that .ts files work with full type annotations
-/// <reference path="../types/appjs.d.ts" />
+import * as appjs from "../packages/appjs-runtime/src/index.ts";
+import type { AppJsEvent } from "../packages/appjs-runtime/src/index.ts";
 
 // ---- App logic with TypeScript features ----
 
