@@ -268,6 +268,12 @@ pub fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
         "placeholder" => {
             style.placeholder = Some(unquote(value));
         }
+        "svg" | "svgData" | "svg_data" => {
+            style.svg_data = Some(unquote(value));
+        }
+        "iconSize" | "icon_size" => {
+            style.icon_size = value.trim_matches('"').parse::<f64>().ok();
+        }
 
         _ => {
             eprintln!("[JS] Unknown style property: {} = {}", key, value);

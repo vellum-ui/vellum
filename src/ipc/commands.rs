@@ -60,6 +60,8 @@ pub enum JsCommand {
 pub enum WidgetKind {
     Label,
     Button,
+    IconButton,
+    Svg,
     TextInput,
     TextArea,
     Checkbox,
@@ -122,6 +124,10 @@ pub struct WidgetStyle {
 
     // -- TextInput --
     pub placeholder: Option<String>,
+
+    // -- SVG/Image --
+    pub svg_data: Option<String>,
+    pub icon_size: Option<f64>,
 }
 
 /// Font style (normal vs italic)

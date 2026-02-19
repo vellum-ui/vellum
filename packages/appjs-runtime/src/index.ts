@@ -73,6 +73,16 @@ export function button(id: string, parentId: string | null, text: string, style?
     return id;
 }
 
+export function iconButton(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
+    ui.createWidget(id, "iconButton", parentId, null, { ...style, svgData });
+    return id;
+}
+
+export function svg(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
+    ui.createWidget(id, "svg", parentId, svgData, style ?? null);
+    return id;
+}
+
 export function flex(id: string, parentId: string | null, style?: AppJsStyle): string {
     ui.createWidget(id, "flex", parentId, null, style ?? null);
     return id;
@@ -169,6 +179,8 @@ export const app = {
     nextId,
     label,
     button,
+    iconButton,
+    svg,
     flex,
     row,
     column,

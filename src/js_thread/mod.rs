@@ -40,6 +40,8 @@ fn parse_widget_kind(kind: &str) -> WidgetKind {
     match kind {
         "Label" | "label" => WidgetKind::Label,
         "Button" | "button" => WidgetKind::Button,
+        "IconButton" | "iconButton" | "icon_button" => WidgetKind::IconButton,
+        "Svg" | "svg" | "svgIcon" | "svg_icon" | "icon" => WidgetKind::Svg,
         "TextInput" | "textInput" | "text_input" => WidgetKind::TextInput,
         "TextArea" | "textArea" | "text_area" => WidgetKind::TextArea,
         "Checkbox" | "checkbox" => WidgetKind::Checkbox,
