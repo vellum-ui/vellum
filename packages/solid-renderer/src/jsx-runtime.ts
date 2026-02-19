@@ -1,5 +1,5 @@
 
-import { createComponent } from "solid-js";
+import { createComponent, getOwner } from "solid-js/dist/solid.js";
 import type { Component } from "solid-js";
 import type { AppJsCommonProps, AppJsIntrinsicElements, AppJsJsxNode } from "./types";
 
@@ -24,6 +24,7 @@ function createJsxNode(type: string, props: Record<string, unknown>): AppJsJsxNo
         __appjsJsx: true,
         type,
         props,
+        owner: getOwner(),
     };
 }
 

@@ -2,7 +2,7 @@
 
 > **A JavaScript/TypeScript runtime for building native desktop applications.**
 >
-> Powered by Rust, V8, and GPU-accelerated rendering.
+> Powered by Rust, Bun, and GPU-accelerated rendering.
 
 > [!WARNING]
 > **This project is in very early stages of development.** APIs are unstable and
@@ -19,9 +19,8 @@
 
 appjs is a lightweight desktop application runtime that lets you build native,
 GPU-rendered UIs using JavaScript or TypeScript. Instead of bundling a full web
-browser (like Electron), appjs pairs a minimal V8-based JS runtime
-([Deno Core](https://github.com/denoland/deno_core)) with a native widget
-toolkit ([Masonry](https://github.com/linebender/xilem)), giving you:
+browser (like Electron), appjs pairs a Bun process with a native widget toolkit
+([Masonry](https://github.com/linebender/xilem)), giving you:
 
 - **Small binary size** -- no bundled Chromium
 - **Native rendering** -- GPU-accelerated via
@@ -29,7 +28,7 @@ toolkit ([Masonry](https://github.com/linebender/xilem)), giving you:
 - **Fast startup** -- milliseconds, not seconds
 - **Low memory footprint** -- native widgets, not a DOM
 
-Think of it as: _what if Deno and a native UI toolkit had a baby?_
+Think of it as: _what if Bun and a native UI toolkit had a baby?_
 
 ## Quick Start
 
@@ -92,7 +91,7 @@ all times:
 +---------------------------+          +---------------------------+
 |      Main Thread (UI)     |          |   Background Thread (JS)  |
 |                           |          |                           |
-|  winit Event Loop         |          |  Deno Core (V8)           |
+|  winit Event Loop         |          |  Bun Process              |
 |  Masonry Widget Tree      |  <---->  |  Application Logic        |
 |  GPU Rendering (Vello)    |          |  State Management         |
 |                           |          |                           |
@@ -117,21 +116,21 @@ thread **never blocks** -- no I/O, no heavy computation, no JS execution.
 
 ### Background Thread (JS Runtime)
 
-Runs the V8 JavaScript engine via `deno_core`. Executes all application logic,
-manages state, and sends commands to the UI thread.
+Runs JavaScript/TypeScript in a dedicated Bun subprocess. Executes all
+application logic, manages state, and sends commands to the UI thread.
 
-- **Runtime**: `deno_core` with custom ops
+- **Runtime**: `bun` (external process)
 - **Module system**: ES modules
-- **Async**: Full async/await support
+- **IPC transport**: MsgPack over stdio (length-prefixed frames)
 
 ### Communication Bridge
 
 The two threads communicate via asynchronous, typed message passing:
 
-| Direction    | Mechanism        | Purpose                                                                             |
-| ------------ | ---------------- | ----------------------------------------------------------------------------------- |
-| **JS -> UI** | `EventLoopProxy` | Widget creation, styling, updates. Zero-polling, immediately wakes the event loop.  |
-| **UI -> JS** | `mpsc` channel   | User interactions (clicks, input, resize). Delivered via async `op_wait_for_event`. |
+| Direction    | Mechanism          | Purpose                                                                            |
+| ------------ | ------------------ | ---------------------------------------------------------------------------------- |
+| **JS -> UI** | `EventLoopProxy`   | Widget creation, styling, updates. Zero-polling, immediately wakes the event loop. |
+| **UI -> JS** | MsgPack over stdio | User interactions (clicks, input, resize) streamed to the Bun process.             |
 
 All messages are strongly typed Rust enums (`JsCommand`, `UiEvent`) -- no raw
 strings cross the thread boundary.
@@ -320,14 +319,14 @@ This project is in its early stages. Here's what's planned:
 
 ## Tech Stack
 
-| Component    | Technology                                              | Purpose                            |
-| ------------ | ------------------------------------------------------- | ---------------------------------- |
-| JS Engine    | [Deno Core](https://github.com/denoland/deno_core) (V8) | JavaScript/TypeScript execution    |
-| UI Framework | [Masonry](https://github.com/linebender/xilem)          | Native widget tree                 |
-| Windowing    | [winit](https://github.com/rust-windowing/winit)        | Cross-platform window management   |
-| 2D Rendering | [Vello](https://github.com/linebender/vello)            | GPU-accelerated vector graphics    |
-| Text Layout  | [Parley](https://github.com/linebender/parley)          | Text shaping and layout            |
-| Language     | Rust                                                    | Performance, safety, native access |
+| Component    | Technology                                       | Purpose                            |
+| ------------ | ------------------------------------------------ | ---------------------------------- |
+| JS Engine    | [Bun](https://bun.sh/)                           | JavaScript/TypeScript execution    |
+| UI Framework | [Masonry](https://github.com/linebender/xilem)   | Native widget tree                 |
+| Windowing    | [winit](https://github.com/rust-windowing/winit) | Cross-platform window management   |
+| 2D Rendering | [Vello](https://github.com/linebender/vello)     | GPU-accelerated vector graphics    |
+| Text Layout  | [Parley](https://github.com/linebender/parley)   | Text shaping and layout            |
+| Language     | Rust                                             | Performance, safety, native access |
 
 ## Contributing
 
@@ -346,4 +345,4 @@ TBD
 
 ---
 
-_Built with Rust, V8, and the Linebender ecosystem._
+_Built with Rust, Bun, and the Linebender ecosystem._

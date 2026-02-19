@@ -1,6 +1,5 @@
-import { createSignal } from "solid-js";
 import * as appjs from "@appjs/runtime";
-import { createAppJsRenderer } from "@appjs/solid-renderer";
+import { createAppJsRenderer, createSignal } from "@appjs/solid-renderer";
 
 appjs.window.setTitle("AppJS Solid TSX Demo");
 appjs.window.resize(700, 460);

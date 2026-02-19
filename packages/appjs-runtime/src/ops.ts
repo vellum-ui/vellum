@@ -1,43 +1,24 @@
 import type { AppJsStyle } from "./types.ts";
+import { ensureBridge, type BridgeEvent, type Bridge, type JsToRustMessage } from "./bun_bridge.ts";
 
-type CoreOps = {
-    op_set_title(title: string): void;
-    op_resize_window(width: number, height: number): void;
-    op_close_window(): void;
-    op_create_widget(
-        id: string,
-        kind: string,
-        parentId: string | null,
-        text: string | null,
-        styleJson: string | null
-    ): void;
-    op_remove_widget(id: string): void;
-    op_set_widget_text(id: string, text: string): void;
-    op_set_widget_visible(id: string, visible: boolean): void;
-    op_set_widget_value(id: string, value: number): void;
-    op_set_widget_checked(id: string, checked: boolean): void;
-    op_set_widget_style(id: string, styleJson: string): void;
-    op_set_style_property(id: string, property: string, value: string): void;
-    op_log(level: string, message: string): void;
-    op_exit_app(): void;
-    op_wait_for_event(): Promise<string>;
-};
+const bridge: Bridge = ensureBridge();
 
-const core = (globalThis as unknown as { Deno: { core: { ops: CoreOps } } }).Deno.core;
-const ops = core.ops;
+export const rawOps = null;
 
-export const rawOps = ops;
+export function onBridgeEvent(callback: (event: BridgeEvent) => void): () => void {
+    return bridge.onEvent(callback);
+}
 
 export function setTitle(title: string): void {
-    ops.op_set_title(title);
+    bridge.send({ type: "setTitle", title });
 }
 
 export function resizeWindow(width: number, height: number): void {
-    ops.op_resize_window(width, height);
+    bridge.send({ type: "resizeWindow", width, height });
 }
 
 export function closeWindow(): void {
-    ops.op_close_window();
+    bridge.send({ type: "closeWindow" });
 }
 
 export function createWidget(
@@ -47,37 +28,38 @@ export function createWidget(
     text: string | null,
     style: AppJsStyle | null
 ): void {
-    ops.op_create_widget(
+    bridge.send({
+        type: "createWidget",
         id,
         kind,
-        parentId ?? null,
-        text ?? null,
-        style ? JSON.stringify(style) : null
-    );
+        parent_id: parentId ?? null,
+        text: text ?? null,
+        style_json: style ? JSON.stringify(style) : null,
+    });
 }
 
 export function removeWidget(id: string): void {
-    ops.op_remove_widget(id);
+    bridge.send({ type: "removeWidget", id });
 }
 
 export function setWidgetText(id: string, text: string): void {
-    ops.op_set_widget_text(id, text);
+    bridge.send({ type: "setWidgetText", id, text });
 }
 
 export function setWidgetVisible(id: string, visible: boolean): void {
-    ops.op_set_widget_visible(id, visible);
+    bridge.send({ type: "setWidgetVisible", id, visible });
 }
 
 export function setWidgetValue(id: string, value: number): void {
-    ops.op_set_widget_value(id, value);
+    bridge.send({ type: "setWidgetValue", id, value });
 }
 
 export function setWidgetChecked(id: string, checked: boolean): void {
-    ops.op_set_widget_checked(id, checked);
+    bridge.send({ type: "setWidgetChecked", id, checked });
 }
 
 export function setWidgetStyle(id: string, style: AppJsStyle): void {
-    ops.op_set_widget_style(id, JSON.stringify(style));
+    bridge.send({ type: "setWidgetStyle", id, style_json: JSON.stringify(style) });
 }
 
 export function setStyleProperty(
@@ -85,17 +67,13 @@ export function setStyleProperty(
     property: string,
     value: string | number | boolean
 ): void {
-    ops.op_set_style_property(id, property, String(value));
+    bridge.send({ type: "setStyleProperty", id, property, value: String(value) });
 }
 
 export function log(level: "debug" | "info" | "warn" | "error", message: string): void {
-    ops.op_log(level, String(message));
+    bridge.send({ type: "log", level, message: String(message) });
 }
 
 export function exit(): void {
-    ops.op_exit_app();
-}
-
-export function waitForEvent(): Promise<string> {
-    return ops.op_wait_for_event();
+    bridge.send({ type: "exitApp" });
 }

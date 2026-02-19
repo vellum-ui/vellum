@@ -1,5 +1,5 @@
 use masonry::core::{ErasedAction, WidgetId};
-use masonry::widgets::{Checkbox, CheckboxToggled};
+use masonry::widgets::{ButtonPress, Checkbox, CheckboxToggled};
 use masonry_winit::app::{AppDriver, DriverCtx, WindowId};
 
 use crate::ipc::{JsCommandAction, UiEvent, UiEventSender, WidgetActionKind};
@@ -88,8 +88,8 @@ impl AppDriver for AppJsDriver {
             return;
         }
 
-        // Handle Button press (type name matching)
-        if type_name.contains("ButtonPress") {
+        // Handle button presses exactly as Masonry examples do.
+        if action.is::<ButtonPress>() {
             if let Some(id) = self.find_js_id(widget_id) {
                 let _ = self.event_sender.send(UiEvent::WidgetAction {
                     widget_id: id,

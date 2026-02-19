@@ -1,13 +1,13 @@
-import { waitForEvent } from "./ops.ts";
+import { onBridgeEvent } from "./ops.ts";
 import type { AppJsEvent } from "./types.ts";
 
 type EventHandler = (event: AppJsEvent) => void;
 
 const listeners: Record<string, EventHandler[]> = {};
 let eventLoopRunning = false;
+let unsubscribeBridge: (() => void) | null = null;
 
-function dispatch(eventJson: string): void {
-    const event = JSON.parse(eventJson) as AppJsEvent;
+function dispatch(event: AppJsEvent): void {
     const type = event.type;
     if (!type) return;
 
@@ -34,31 +34,10 @@ function dispatch(eventJson: string): void {
     }
 }
 
-async function startEventLoop(): Promise<void> {
+function startEventLoop(): void {
     if (eventLoopRunning) return;
     eventLoopRunning = true;
-
-    while (eventLoopRunning) {
-        try {
-            const eventJson = await waitForEvent();
-            if (!eventJson) {
-                eventLoopRunning = false;
-                break;
-            }
-
-            const parsed = JSON.parse(eventJson) as AppJsEvent;
-            if (parsed.type === "disconnected") {
-                eventLoopRunning = false;
-                break;
-            }
-
-            dispatch(eventJson);
-        } catch (err) {
-            console.error("[appjs] Event loop error:", err);
-            eventLoopRunning = false;
-            break;
-        }
-    }
+    unsubscribeBridge = onBridgeEvent((event) => dispatch(event));
 }
 
 export function on(type: string, callback: EventHandler): () => void {
@@ -88,6 +67,12 @@ export function off(type?: string): void {
     for (const key of Object.keys(listeners)) {
         delete listeners[key];
     }
+
+    if (unsubscribeBridge) {
+        unsubscribeBridge();
+        unsubscribeBridge = null;
+    }
+    eventLoopRunning = false;
 }
 
 export const events = { on, off };

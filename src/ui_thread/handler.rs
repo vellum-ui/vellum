@@ -206,7 +206,7 @@ pub fn handle_js_command(
             } else {
                 format!("\"{}\"", value)
             };
-            crate::js_thread::ipc_ops::apply_style_property_public(
+            crate::js_thread::style_parser::apply_style_property(
                 &mut style,
                 &property,
                 &quoted_value,

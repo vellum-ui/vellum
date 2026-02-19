@@ -1,5 +1,5 @@
 
-import { createRenderEffect } from "solid-js";
+import { createRenderEffect, runWithOwner } from "solid-js/dist/solid.js";
 import { createRenderer } from "solid-js/universal";
 import {
   AppJsRenderer,
@@ -377,11 +377,19 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
 
       if (isReactiveAccessorProp(key, value)) {
         let prev: unknown = undefined;
-        createRenderEffect(() => {
-          const next = value();
-          setElementProperty(element, key, next, prev);
-          prev = next;
-        });
+        const setupEffect = () => {
+          createRenderEffect(() => {
+            const next = value();
+            setElementProperty(element, key, next, prev);
+            prev = next;
+          });
+        };
+
+        if (input.owner) {
+          runWithOwner(input.owner as Parameters<typeof runWithOwner>[0], setupEffect);
+        } else {
+          setupEffect();
+        }
         continue;
       }
 
@@ -390,9 +398,20 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
 
     const childrenProp = props.children;
     if (typeof childrenProp === "function") {
-      createRenderEffect(() => {
-        reconcileElementChildren(element, childrenProp());
-      });
+      const setupChildrenEffect = () => {
+        createRenderEffect(() => {
+          reconcileElementChildren(element, childrenProp());
+        });
+      };
+
+      if (input.owner) {
+        runWithOwner(
+          input.owner as Parameters<typeof runWithOwner>[0],
+          setupChildrenEffect
+        );
+      } else {
+        setupChildrenEffect();
+      }
     } else {
       reconcileElementChildren(element, childrenProp);
     }

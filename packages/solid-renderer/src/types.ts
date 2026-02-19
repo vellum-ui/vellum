@@ -69,6 +69,7 @@ export interface AppJsJsxNode {
   __appjsJsx: true;
   type: string;
   props?: Record<string, unknown>;
+  owner?: unknown;
 }
 
 export interface AppJsRoot {

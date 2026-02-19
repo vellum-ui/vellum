@@ -1,10 +1,12 @@
-# codebase_structure.md
+# architecture.md
 
-This document provides a comprehensive overview of the `appjs` codebase structure, component responsibilities, and interaction flows.
+This document provides an overview of the `appjs` codebase structure, component
+responsibilities, and interaction flows.
 
 ## 1. High-Level Architecture
 
-`appjs` uses a **dual-threaded architecture** to ensure the UI remains responsive while executing JavaScript logic.
+`appjs` uses a **dual-threaded + subprocess architecture** to keep rendering
+responsive while running JavaScript logic externally.
 
 ```mermaid
 graph TD
@@ -14,97 +16,94 @@ graph TD
         Driver[AppDriver]
     end
 
-    subgraph "Background Thread (JS)"
-        Deno[Deno Runtime]
-        Ops[ IPC Ops]
+    subgraph "Background Thread (Rust Bridge)"
+        Bridge[JS Bridge Thread]
+        Bun[Bun Process]
     end
 
-    Winit -->|UiEvent| Channel1[IPC Channel]
-    Channel1 -->|UiEvent| Ops
-    
-    Deno -->|JsCommand| Channel2[IPC Channel]
-    Channel2 -->|JsCommand| Driver
+    Winit -->|UiEvent| Bridge
+    Bridge -->|MsgPack over stdin| Bun
+    Bun -->|MsgPack over stdout| Bridge
+    Bridge -->|JsCommand via EventLoopProxy| Driver
 ```
 
 - **UI Thread**: Handles window management, rendering, and user input.
-- **JS Thread**: Runs the V8/Deno engine, executes business logic, and sends commands to update the UI.
-- **IPC**: Uses `std::sync::mpsc` channels to pass messages between threads.
+- **JS Bridge Thread**: Spawns Bun, forwards UI events, and maps Bun messages
+  into typed `JsCommand`s.
+- **IPC**: Uses length-prefixed MsgPack frames over Bun stdio for cross-process
+  transport.
 
-## 2. Folder Structure & File Responsibilities
+## 2. Folder Structure & Responsibilities
 
-### `src/` Root
-- **`main.rs`**: The entry point. Initializes the JS thread, sets up the channels, creates the Winit event loop, and launches the application.
+### `src/`
 
-### `src/ipc/` (Inter-Process Communication)
-Defines the shared types and communication primitives used by both threads.
+- **`main.rs`**: Entry point. Initializes UI, creates channels, and spawns the
+  JS bridge thread.
 
-| File | Description |
-|---|---|
-| **`mod.rs`** | Module exports. |
-| **`channels.rs`** | Defines `AppChannel` struct to bundle sender/receiver pairs. |
-| **`commands.rs`** | Defines `JsCommand` enum (e.g., `CreateWidget`, `SetStyle`) sent **from JS to UI**. |
-| **`events.rs`** | Defines `UiEvent` enum (e.g., `WidgetAction`) sent **from UI to JS**. |
-| **`color.rs`** | Shared `ColorValue` enum and parsing logic. |
+### `src/ipc/`
 
-### `src/ui_thread/` (Main Thread)
-Handles the visual aspect of the application using the `masonry` library.
+Defines shared communication types and protocol helpers.
 
-| File | Description |
-|---|---|
-| **`mod.rs`** | Module exports and `run_ui_loop` function. |
-| **`driver.rs`** | `AppJsDriver` acts as the bridge. It implements `AppDriver` to receive Masonry actions and `JsCommand`s from the channel. |
-| **`handler.rs`** | The central logic for processing `JsCommand`s. Delegates specific tasks to `creation.rs` and `styles.rs`. |
-| **`creation.rs`** | Factory logic to create Masonry widgets (`Button`, `Label`, `Flex`) from `JsCommand` parameters. |
-| **`styles.rs`** | Helpers to convert `WidgetStyle` (from IPC) into Masonry `StyleProperty` and implementations. |
-| **`widget_manager.rs`** | Maintains a mapping between the string-based IDs used in JS and the `WidgetId`s used by Masonry. |
+| File              | Description                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| **`mod.rs`**      | Module exports.                                                                    |
+| **`channels.rs`** | In-process channel wiring (`UiEventSender`, `UiEventReceiver`, `JsCommandSender`). |
+| **`commands.rs`** | `JsCommand` enum and widget/style types sent from JS/Bun to UI.                    |
+| **`events.rs`**   | `UiEvent` enum sent from UI to JS/Bun.                                             |
+| **`color.rs`**    | Shared `ColorValue` parsing and representation.                                    |
+| **`msgpack.rs`**  | MsgPack protocol messages and length-prefixed frame encoding/decoding.             |
 
-### `src/js_thread/` (Background Thread)
-Hosts the Deno runtime environment.
+### `src/js_thread/`
 
-| File | Description |
-|---|---|
-| **`mod.rs`** | Module exports and logic to initialize and run the Deno runtime loop. |
-| **`appjs.js`** | The JavaScript runtime preamble. Defines the global `app` object and helper functions. |
-| **`ipc_ops.rs`** | Defines Rust functions exposed to JavaScript (using `#[op2]`). Acts as the interface for JS to send commands. |
-| **`style_parser.rs`** | Parses raw JSON style strings from JS into strong Rust `WidgetStyle` structs. |
-| **`event_serializer.rs`** | Serializes Rust `UiEvent`s into JSON strings to be dispatched to JavaScript event listeners. |
-| **`console_ops.rs`** | Handles `console.log` and other output from the JS runtime. |
+Hosts the Rust side of the Bun subprocess bridge.
 
-### `src/ui_thread/` (Main Thread)
-Handles the visual aspect of the application using the `masonry` library.
+| File                  | Description                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| **`mod.rs`**          | Spawns Bun, streams MsgPack frames over stdio, and maps protocol messages to `JsCommand`. |
+| **`style_parser.rs`** | Parses style JSON into strong Rust `WidgetStyle` structs.                                 |
 
-| File | Description |
-|---|---|
-| **`mod.rs`** | Module exports and `run_ui_loop` function. |
-| **`driver.rs`** | `AppJsDriver` acts as the bridge. It implements `AppDriver` to receive Masonry actions and `JsCommand`s from the channel. |
-| **`handler.rs`** | The central logic for processing `JsCommand`s. Delegates specific tasks to `creation.rs` and `styles.rs`. |
-| **`creation.rs`** | Factory logic to create Masonry widgets (`Button`, `Label`, `Flex`) from `JsCommand` parameters. |
-| **`styles.rs`** | Helpers to convert `WidgetStyle` (from IPC) into Masonry `StyleProperty` and implementations. |
-| **`widget_manager.rs`** | Maintains a mapping between the string-based IDs used in JS and the `WidgetId`s used by Masonry. |
-| **`layout.rs`** | Helper definitions for Masonry layout constructs (if used). |
+### `src/ui_thread/`
 
-### Startup Flow
-1.  **`main.rs`**: Creates channels. Spawns JS thread. Starts UI event loop.
-2.  **JS Thread**: Initializes Deno. Loads the target script (e.g., `index.js`).
-3.  **UI Thread**: Opens the window and waits for commands.
+Handles native UI behavior via `masonry`.
 
-### Widget Creation (JS -> UI)
-1.  **JS**: Calls `app.createWidget("my_btn", "Button")`.
-2.  **`ipc_ops.rs`**: Receives call. Constructs `JsCommand::CreateWidget`. Sends via channel.
-3.  **`driver.rs`**: Polls channel. Receives command. Passes to `handler.rs`.
-4.  **`handler.rs`**: Calls `creation::create_widget`.
-5.  **`widget_manager.rs`**: Stores mapping `"my_btn" -> WidgetId(1)`.
-6.  **`masonry`**: Renders the new button.
+| File                    | Description                                                       |
+| ----------------------- | ----------------------------------------------------------------- |
+| **`mod.rs`**            | Builds event loop and runs UI.                                    |
+| **`driver.rs`**         | `AppJsDriver` bridges Masonry actions and incoming `JsCommand`s.  |
+| **`handler.rs`**        | Central command dispatcher that mutates widgets and window state. |
+| **`creation.rs`**       | Widget creation helpers.                                          |
+| **`styles.rs`**         | Style conversion helpers.                                         |
+| **`widget_manager.rs`** | Maps JS widget IDs to Masonry `WidgetId`s.                        |
+| **`layout.rs`**         | Initial layout helpers.                                           |
 
-### Event Handling (UI -> JS)
-1.  **User**: Clicks the button.
-2.  **`driver.rs`**: Intercepts `WidgetAction::Click`. Finds JS ID `"my_btn"`.
-3.  **`ipc/events.rs`**: Constructs `UiEvent::WidgetAction { id: "my_btn", action: Click }`. Sends via channel.
-4.  **`js_thread`**: Loop receives event.
-5.  **`event_serializer.rs`**: Converts to JSON `{"type": "widgetAction", "id": "my_btn", ...}`.
-6.  **JS**: Triggers the registered event listener callback.
+### `packages/appjs-runtime/src/`
+
+JavaScript runtime package and Bun bootstrap.
+
+| File                | Description                                                               |
+| ------------------- | ------------------------------------------------------------------------- |
+| **`bun_bridge.ts`** | Runtime bridge module initialized when `@appjs/runtime` is imported in Bun. |
+| **`ops.ts`**        | Bridge-backed command API used by `@appjs/runtime`.                       |
+| **`events.ts`**     | Event subscription layer fed by bridge-pushed UI events.                  |
+| **`index.ts`**      | Public JS API surface (`window`, `ui`, widgets, events, logging).         |
+
+## 3. Runtime Flow
+
+1. **`main.rs`** creates UI event loop and IPC channels, then spawns the JS
+   bridge thread.
+2. **`src/js_thread/mod.rs`** launches `bun run <script>` directly.
+3. Importing `@appjs/runtime` in the Bun script initializes `bun_bridge.ts`.
+4. UI actions produce `UiEvent` values which are MsgPack-encoded and streamed to
+   Bun.
+5. Bun/runtime API emits command messages back over MsgPack.
+6. Rust bridge decodes messages to `JsCommand` and dispatches to UI via
+   `EventLoopProxy`.
 
 ## 4. Key Concepts
-- **Asynchronous Communication**: The two threads never block each other.
-- **Stateless UI (mostly)**: The JS thread is the source of truth for application state. The UI thread is a view.
-- **Idempotent Updates**: Re-sending style updates overwrites previous states.
+
+- **Typed core messages**: Internal state transitions remain strongly typed
+  (`UiEvent`, `JsCommand`).
+- **Process isolation**: JavaScript runs out-of-process in Bun instead of inside
+  Rust.
+- **Non-blocking UI**: UI thread stays focused on rendering/input while IPC
+  happens on the bridge thread.

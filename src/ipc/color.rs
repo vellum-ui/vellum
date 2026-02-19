@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Represents a parsed color value
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ColorValue {
     /// RGBA color (0-255 per channel)
     Rgba { r: u8, g: u8, b: u8, a: u8 },

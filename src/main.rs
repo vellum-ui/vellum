@@ -2,10 +2,10 @@
 //
 // This application implements a dual-threaded architecture:
 // - Main Thread (UI): Owns the window and widget tree via masonry_winit
-// - Background Thread (JS): Runs the Deno JavaScript runtime
+// - Background Thread (JS): Runs a Bun subprocess bridge
 //
 // Communication between threads uses EventLoopProxy (JS→UI, zero polling)
-// and std::sync::mpsc (UI→JS, for UI events).
+// and MsgPack over Bun stdio (UI→JS, for UI events).
 
 // On Windows platform, don't show a console when opening the app.
 // #![windows_subsystem = "windows"]
@@ -19,6 +19,22 @@ use std::thread;
 use ipc::IpcChannels;
 use js_thread::{JsRuntimeConfig, run_js_thread};
 use ui_thread::{prepare_ui, run_ui_blocking};
+
+fn normalize_script_path_for_bun(path: &std::path::Path) -> String {
+    let raw = path.to_string_lossy().to_string();
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(stripped) = raw.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{}", stripped);
+        }
+        if let Some(stripped) = raw.strip_prefix(r"\\?\") {
+            return stripped.to_string();
+        }
+    }
+
+    raw
+}
 
 fn main() {
     println!("AppJS Starting...");
@@ -72,7 +88,7 @@ fn main() {
 
     // Configure the JS runtime
     let js_config = JsRuntimeConfig {
-        script_path: absolute_path.to_string_lossy().to_string(),
+        script_path: normalize_script_path_for_bun(&absolute_path),
     };
 
     // Phase 3: Spawn the JS runtime thread with EventLoopProxy-based command sender.
