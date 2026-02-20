@@ -48,13 +48,15 @@ cd appjs
 cargo build
 
 # Run an example
-cargo run -- examples/test_ui.js
+bun run examples/js/test_ui.js
 ```
 
 ### Hello World
 
 ```javascript
 // hello.js
+import appjs from "@appjs/runtime";
+
 appjs.window.setTitle("Hello World");
 
 appjs.body.setStyle({
@@ -79,7 +81,7 @@ appjs.events.on("widgetAction", (e) => {
 ```
 
 ```bash
-cargo run -- hello.js
+bun run hello.js
 ```
 
 ## Architecture

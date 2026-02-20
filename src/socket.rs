@@ -9,6 +9,10 @@ pub use uds_windows::UnixListener;
 
 /// Returns the platform-specific socket path
 pub fn get_socket_path() -> String {
+    if let Ok(path) = std::env::var("APPJS_SOCKET") {
+        return path;
+    }
+
     #[cfg(windows)]
     {
         // On Windows, a file path is fine, but it typically lives in the temp directory

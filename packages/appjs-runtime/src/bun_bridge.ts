@@ -1,11 +1,38 @@
 import process from "node:process";
 import net from "node:net";
 import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { spawn, type ChildProcess } from "node:child_process";
 import { decode, encode } from "@msgpack/msgpack";
 
 const SOCKET_PATH = process.platform === "win32"
-    ? `${os.tmpdir()}\\appjs.sock`
-    : "/tmp/appjs.sock";
+    ? `${os.tmpdir()}\\appjs_${crypto.randomUUID()}.sock`
+    : `/tmp/appjs_${crypto.randomUUID()}.sock`;
+
+function findAppJsBinary(): string {
+    const isWin = process.platform === "win32";
+    const exeName = isWin ? "appjs.exe" : "appjs";
+
+    if (process.env.APPJS_BIN) {
+        return process.env.APPJS_BIN;
+    }
+
+    const searchPaths = [
+        path.join(process.cwd(), "target", "debug", exeName),
+        path.join(process.cwd(), "target", "release", exeName),
+        path.join(process.cwd(), exeName),
+    ];
+
+    for (const p of searchPaths) {
+        if (fs.existsSync(p)) {
+            return p;
+        }
+    }
+
+    return exeName;
+}
 
 export type BridgeEvent = {
     type: string;
@@ -160,21 +187,23 @@ export function initAppJsBridge(): Bridge {
 
     globalScope.__APPJS_BRIDGE__ = bridge;
 
-    socket = net.createConnection(SOCKET_PATH, () => {
-        isConnected = true;
-        globalScope.__APPJS_SOCKET__ = socket!;
-        patchConsole(bridge);
-        bridge.send({ type: "ready" });
-
-        for (const msg of messageQueue) {
-            writeFrame(socket!, msg);
-        }
-        messageQueue.length = 0;
+    const binPath = findAppJsBinary();
+    const appjsProcess = spawn(binPath, [], {
+        env: { ...process.env, APPJS_SOCKET: SOCKET_PATH },
+        stdio: "inherit",
     });
 
-    socket.on("error", (err) => {
-        process.stderr.write(`[appjs bridge] Socket connection error: ${String(err)}\n`);
+    appjsProcess.on("error", (err) => {
+        process.stderr.write(`[appjs bridge] Failed to start appjs binary: ${String(err)}\n`);
         process.exit(1);
+    });
+
+    appjsProcess.on("exit", (code) => {
+        process.exit(code ?? 0);
+    });
+
+    process.on("exit", () => {
+        appjsProcess.kill();
     });
 
     const emitEvent = (event: BridgeEvent) => {
@@ -216,14 +245,46 @@ export function initAppJsBridge(): Bridge {
         }
     };
 
-    socket.on("data", (chunk) => {
-        readBuffer = Buffer.concat([readBuffer, Buffer.from(chunk)]);
-        processReadBuffer();
-    });
+    function tryConnect(retries = 20) {
+        socket = net.createConnection(SOCKET_PATH, () => {
+            isConnected = true;
+            globalScope.__APPJS_SOCKET__ = socket!;
+            patchConsole(bridge);
+            bridge.send({ type: "ready" });
 
-    socket.on("end", () => {
-        process.exit(0);
-    });
+            for (const msg of messageQueue) {
+                writeFrame(socket!, msg);
+            }
+            messageQueue.length = 0;
+
+            socket!.on("data", (chunk) => {
+                readBuffer = Buffer.concat([readBuffer, Buffer.from(chunk)]);
+                processReadBuffer();
+            });
+
+            socket!.on("end", () => {
+                process.exit(0);
+            });
+
+            socket!.on("error", (err) => {
+                process.stderr.write(`[appjs bridge] Socket connection error: ${String(err)}\n`);
+                process.exit(1);
+            });
+        });
+
+        socket.on("error", (err) => {
+            if (!isConnected) {
+                if (retries > 0) {
+                    setTimeout(() => tryConnect(retries - 1), 50);
+                } else {
+                    process.stderr.write(`[appjs bridge] Socket connection failed after retries: ${String(err)}\n`);
+                    process.exit(1);
+                }
+            }
+        });
+    }
+
+    tryConnect();
 
     return bridge;
 }

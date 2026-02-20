@@ -176,6 +176,9 @@ fn run_socket_server(
         level: LogLevel::Info,
         message: "Socket connection closed".to_string(),
     });
+    
+    // JS runtime disconnected, exit the UI thread cleanly
+    let _ = command_sender.send(JsCommand::ExitApp);
 
     Ok(())
 }
