@@ -66,7 +66,7 @@ fn main() {
             run_js_thread(js_channels);
             println!("[Main] JS thread finished");
         })
-        .expect("Failed to spawn JS runtime thread");
+        .unwrap_or_else(|e| panic!("Fatal: failed to spawn JS runtime thread: {e}"));
 
     // Phase 4: Run the UI event loop on the main thread (blocks forever).
     // The main thread MUST run the UI due to platform requirements (macOS, etc.).

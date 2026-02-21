@@ -39,6 +39,9 @@ export type BridgeEvent = {
     widgetId?: string;
     action?: string;
     value?: string | number | boolean;
+    source?: string;
+    message?: string;
+    fatal?: boolean;
 };
 
 export type JsToRustMessage =
@@ -67,6 +70,7 @@ export type JsToRustMessage =
 
 type RustToJsMessage =
     | { type: "uiEvent"; event: unknown }
+    | { type: "runtimeError"; source: string; message: string; fatal: boolean }
     | { type: "shutdown" };
 
 export type Bridge = {
@@ -107,6 +111,16 @@ function mapUiEvent(event: unknown): BridgeEvent {
             widgetId: widgetAction.widget_id,
             action: "valueChanged",
             value: valueChanged,
+        };
+    }
+
+    const hoverChanged = (widgetAction.action as { HoverChanged?: boolean } | undefined)?.HoverChanged;
+    if (hoverChanged !== undefined) {
+        return {
+            type: "widgetAction",
+            widgetId: widgetAction.widget_id,
+            action: "hover",
+            value: hoverChanged,
         };
     }
 
@@ -177,6 +191,18 @@ export function initAppJsBridge(): Bridge {
             const message = decode(frame) as RustToJsMessage;
             if (message?.type === "uiEvent") {
                 emitEvent(mapUiEvent(message.event));
+                return;
+            }
+            if (message?.type === "runtimeError") {
+                emitEvent({
+                    type: "runtimeError",
+                    source: message.source,
+                    message: message.message,
+                    fatal: message.fatal,
+                });
+                process.stderr.write(
+                    `[appjs bridge] Rust runtime error (${message.source}, fatal=${String(message.fatal)}): ${message.message}\n`,
+                );
                 return;
             }
             if (message?.type === "shutdown") {

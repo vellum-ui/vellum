@@ -13,6 +13,16 @@ use super::styles::{apply_box_props_to_widget, apply_flex_style, build_text_styl
 use super::widget_manager::{ROOT_FLEX_TAG, WidgetManager};
 use super::widgets::svg_widget_impl::SvgWidget;
 
+fn report_runtime_error(event_sender: &UiEventSender, source: &str, message: String, fatal: bool) {
+    if let Err(send_err) = event_sender.send(crate::ipc::UiEvent::RuntimeError {
+        source: source.to_string(),
+        message,
+        fatal,
+    }) {
+        eprintln!("[UI] Failed to report runtime error to JS thread: {send_err}");
+    }
+}
+
 /// Process a single JsCommand by mutating the widget tree.
 pub fn handle_js_command(
     cmd: JsCommand,
@@ -72,8 +82,12 @@ pub fn handle_js_command(
                         });
                     }
                     WidgetKind::Button => {
-                        println!(
-                            "[UI] SetWidgetText on Button is deprecated since it is now a Flex container. Use a child <label> instead."
+                        report_runtime_error(
+                            _event_sender,
+                            "ui-handler",
+                            "SetWidgetText on Button is not supported. Use a child label widget instead."
+                                .to_string(),
+                            false,
                         );
                     }
                     WidgetKind::Svg => {
@@ -84,14 +98,25 @@ pub fn handle_js_command(
                         });
                     }
                     _ => {
-                        println!(
-                            "[UI] SetWidgetText on {:?} not supported, id={}",
-                            info.kind, id
+                        report_runtime_error(
+                            _event_sender,
+                            "ui-handler",
+                            format!(
+                                "SetWidgetText on {:?} is not supported for widget '{id}'",
+                                info.kind
+                            ),
+                            false,
                         );
                     }
                 }
             } else {
                 eprintln!("[UI] Widget '{}' not found for SetWidgetText", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for SetWidgetText"),
+                    false,
+                );
             }
         }
 
@@ -112,14 +137,25 @@ pub fn handle_js_command(
                         });
                     }
                     _ => {
-                        println!(
-                            "[UI] SetWidgetValue on {:?} not supported, id={}",
-                            info.kind, id
+                        report_runtime_error(
+                            _event_sender,
+                            "ui-handler",
+                            format!(
+                                "SetWidgetValue on {:?} is not supported for widget '{id}'",
+                                info.kind
+                            ),
+                            false,
                         );
                     }
                 }
             } else {
                 eprintln!("[UI] Widget '{}' not found for SetWidgetValue", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for SetWidgetValue"),
+                    false,
+                );
             }
         }
 
@@ -132,13 +168,24 @@ pub fn handle_js_command(
                         Checkbox::set_checked(&mut cb, checked);
                     });
                 } else {
-                    println!(
-                        "[UI] SetWidgetChecked on {:?} not supported, id={}",
-                        info.kind, id
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!(
+                            "SetWidgetChecked on {:?} is not supported for widget '{id}'",
+                            info.kind
+                        ),
+                        false,
                     );
                 }
             } else {
                 eprintln!("[UI] Widget '{}' not found for SetWidgetChecked", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for SetWidgetChecked"),
+                    false,
+                );
             }
         }
 
@@ -203,14 +250,25 @@ pub fn handle_js_command(
                         });
                     }
                     _ => {
-                        println!(
-                            "[UI] SetWidgetStyle partially applied for {:?} id={}",
-                            info.kind, id
+                        report_runtime_error(
+                            _event_sender,
+                            "ui-handler",
+                            format!(
+                                "SetWidgetStyle was not fully supported for {:?} widget '{id}'",
+                                info.kind
+                            ),
+                            false,
                         );
                     }
                 }
             } else {
                 eprintln!("[UI] Widget '{}' not found for SetWidgetStyle", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for SetWidgetStyle"),
+                    false,
+                );
             }
         }
 
@@ -246,9 +304,13 @@ pub fn handle_js_command(
         }
 
         JsCommand::SetWidgetVisible { id, visible } => {
-            println!(
-                "[UI] SetWidgetVisible id={}, visible={} (not yet implemented — requires parent pod access)",
-                id, visible
+            report_runtime_error(
+                _event_sender,
+                "ui-handler",
+                format!(
+                    "SetWidgetVisible is not implemented for widget '{id}' (requested visible={visible})"
+                ),
+                false,
             );
         }
 
@@ -263,6 +325,14 @@ pub fn handle_js_command(
                         "[UI] RemoveWidget '{}' has no siblings under parent '{}'; syncing metadata only",
                         id, parent_key
                     );
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!(
+                            "RemoveWidget for '{id}' found no siblings under parent '{parent_key}'; metadata was synced only"
+                        ),
+                        false,
+                    );
                     widget_manager.remove_widget_subtree(&id);
                     return;
                 }
@@ -273,6 +343,14 @@ pub fn handle_js_command(
                     eprintln!(
                         "[UI] RemoveWidget '{}' stale index {} (siblings={}) under parent '{}'; clamping",
                         id, child_index, sibling_count, parent_key
+                    );
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!(
+                            "RemoveWidget for '{id}' had stale index {child_index}; clamped within parent '{parent_key}'"
+                        ),
+                        false,
                     );
                     sibling_count - 1
                 };
@@ -315,12 +393,29 @@ pub fn handle_js_command(
                                 "[UI] Parent '{}' kind {:?} does not support child removal for '{}'",
                                 parent_key, parent_info.kind, id
                             );
+                            report_runtime_error(
+                                _event_sender,
+                                "ui-handler",
+                                format!(
+                                    "Parent '{parent_key}' of kind {:?} does not support child removal for '{id}'",
+                                    parent_info.kind
+                                ),
+                                false,
+                            );
                         }
                     }
                 } else {
                     eprintln!(
                         "[UI] Parent widget '{}' not found for RemoveWidget '{}'; syncing metadata only",
                         parent_key, id
+                    );
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!(
+                            "Parent widget '{parent_key}' not found for RemoveWidget '{id}'; metadata was synced only"
+                        ),
+                        false,
                     );
                 }
 
@@ -329,6 +424,12 @@ pub fn handle_js_command(
                 println!("[UI] Removed widget '{}'", id);
             } else {
                 eprintln!("[UI] Widget '{}' not found for RemoveWidget", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for RemoveWidget"),
+                    false,
+                );
             }
         }
 
@@ -354,13 +455,24 @@ pub fn handle_js_command(
                     let widget_id = info.widget_id;
                     super::widgets::image::update_data(render_root, widget_id, &data);
                 } else {
-                    println!(
-                        "[UI] SetImageData on {:?} not supported, id={}",
-                        info.kind, id
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!(
+                            "SetImageData on {:?} is not supported for widget '{id}'",
+                            info.kind
+                        ),
+                        false,
                     );
                 }
             } else {
                 eprintln!("[UI] Widget '{}' not found for SetImageData", id);
+                report_runtime_error(
+                    _event_sender,
+                    "ui-handler",
+                    format!("Widget '{id}' not found for SetImageData"),
+                    false,
+                );
             }
         }
     }

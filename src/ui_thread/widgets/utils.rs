@@ -5,6 +5,8 @@ use masonry::widgets::{ChildAlignment, Flex, SizedBox, ZStack};
 use crate::ipc::WidgetKind;
 use crate::ui_thread::widget_manager::{ROOT_FLEX_TAG, WidgetManager};
 
+use super::hoverable::Hoverable;
+
 /// Helper: add a widget to the root flex or a named parent flex.
 /// If `flex_factor` is Some, the child is added with that flex grow factor.
 /// Returns false if the parent was not found or is not a container.
@@ -16,13 +18,14 @@ pub fn add_to_parent(
     flex_factor: Option<f64>,
 ) -> bool {
     let parent_key = parent_id.as_deref().unwrap_or("__root__");
+    let wrapped_widget = NewWidget::new(Hoverable::new(new_widget));
 
     if parent_id.is_none() {
         render_root.edit_widget_with_tag(ROOT_FLEX_TAG, |mut flex| {
             if let Some(factor) = flex_factor {
-                Flex::add_flex_child(&mut flex, new_widget, factor);
+                Flex::add_flex_child(&mut flex, wrapped_widget, factor);
             } else {
-                Flex::add_child(&mut flex, new_widget);
+                Flex::add_child(&mut flex, wrapped_widget);
             }
         });
         true
@@ -33,9 +36,9 @@ pub fn add_to_parent(
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut flex = parent_widget.downcast::<Flex>();
                     if let Some(factor) = flex_factor {
-                        Flex::add_flex_child(&mut flex, new_widget, factor);
+                        Flex::add_flex_child(&mut flex, wrapped_widget, factor);
                     } else {
-                        Flex::add_child(&mut flex, new_widget);
+                        Flex::add_child(&mut flex, wrapped_widget);
                     }
                 });
                 true
@@ -47,9 +50,9 @@ pub fn add_to_parent(
                     let mut child = masonry::widgets::Button::child_mut(&mut btn);
                     let mut flex = child.downcast::<Flex>();
                     if let Some(factor) = flex_factor {
-                        Flex::add_flex_child(&mut flex, new_widget, factor);
+                        Flex::add_flex_child(&mut flex, wrapped_widget, factor);
                     } else {
-                        Flex::add_child(&mut flex, new_widget);
+                        Flex::add_child(&mut flex, wrapped_widget);
                     }
                 });
                 true
@@ -58,7 +61,7 @@ pub fn add_to_parent(
                 let parent_wid = parent_info.widget_id;
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut sbox = parent_widget.downcast::<SizedBox>();
-                    SizedBox::set_child(&mut sbox, new_widget);
+                    SizedBox::set_child(&mut sbox, wrapped_widget);
                 });
                 true
             }
@@ -66,7 +69,7 @@ pub fn add_to_parent(
                 let parent_wid = parent_info.widget_id;
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut zs = parent_widget.downcast::<ZStack>();
-                    ZStack::insert_child(&mut zs, new_widget, ChildAlignment::ParentAligned);
+                    ZStack::insert_child(&mut zs, wrapped_widget, ChildAlignment::ParentAligned);
                 });
                 true
             }

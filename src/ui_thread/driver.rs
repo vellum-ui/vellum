@@ -6,6 +6,7 @@ use crate::ipc::{JsCommandAction, UiEvent, UiEventSender, WidgetActionKind};
 
 use super::handler::handle_js_command;
 use super::widget_manager::{WidgetInfo, WidgetManager};
+use super::widgets::hoverable::HoverAction;
 
 /// Application driver that bridges JS runtime commands with the masonry UI.
 ///
@@ -33,6 +34,16 @@ impl AppJsDriver {
             .iter()
             .find(|(_, info)| info.widget_id == widget_id)
             .map(|(id, _): (&String, &WidgetInfo)| id.clone())
+    }
+
+    fn report_runtime_error(&self, source: &str, message: String, fatal: bool) {
+        if let Err(send_err) = self.event_sender.send(UiEvent::RuntimeError {
+            source: source.to_string(),
+            message,
+            fatal,
+        }) {
+            eprintln!("[UI] Failed to report runtime error to JS thread: {send_err}");
+        }
     }
 }
 
@@ -69,10 +80,24 @@ impl AppDriver for AppJsDriver {
                 Checkbox::set_checked(&mut cb, toggled.0);
             });
             if let Some(id) = self.find_js_id(widget_id) {
-                let _ = self.event_sender.send(UiEvent::WidgetAction {
+                if let Err(send_err) = self.event_sender.send(UiEvent::WidgetAction {
                     widget_id: id,
                     action: WidgetActionKind::ValueChanged(if toggled.0 { 1.0 } else { 0.0 }),
-                });
+                }) {
+                    eprintln!("[UI] Failed to forward checkbox toggle to JS thread: {send_err}");
+                }
+            }
+            return;
+        }
+
+        if let Some(hover_action) = action.downcast_ref::<HoverAction>() {
+            if let Some(id) = self.find_js_id(hover_action.child_widget_id) {
+                if let Err(send_err) = self.event_sender.send(UiEvent::WidgetAction {
+                    widget_id: id,
+                    action: WidgetActionKind::HoverChanged(hover_action.hovered),
+                }) {
+                    eprintln!("[UI] Failed to forward hover change to JS thread: {send_err}");
+                }
             }
             return;
         }
@@ -80,10 +105,12 @@ impl AppDriver for AppJsDriver {
         // Handle Slider value change (Action = f64)
         if let Some(&value) = action.downcast_ref::<f64>() {
             if let Some(id) = self.find_js_id(widget_id) {
-                let _ = self.event_sender.send(UiEvent::WidgetAction {
+                if let Err(send_err) = self.event_sender.send(UiEvent::WidgetAction {
                     widget_id: id,
                     action: WidgetActionKind::ValueChanged(value),
-                });
+                }) {
+                    eprintln!("[UI] Failed to forward slider value change to JS thread: {send_err}");
+                }
             }
             return;
         }
@@ -91,10 +118,12 @@ impl AppDriver for AppJsDriver {
         // Handle button presses exactly as Masonry examples do.
         if action.is::<ButtonPress>() {
             if let Some(id) = self.find_js_id(widget_id) {
-                let _ = self.event_sender.send(UiEvent::WidgetAction {
+                if let Err(send_err) = self.event_sender.send(UiEvent::WidgetAction {
                     widget_id: id,
                     action: WidgetActionKind::Click,
-                });
+                }) {
+                    eprintln!("[UI] Failed to forward button click to JS thread: {send_err}");
+                }
             }
             return;
         }
@@ -103,6 +132,11 @@ impl AppDriver for AppJsDriver {
         println!(
             "[UI] Unhandled widget action on {:?}: {}",
             widget_id, type_name
+        );
+        self.report_runtime_error(
+            "ui-driver",
+            format!("Unhandled widget action on {widget_id:?}: {type_name}"),
+            false,
         );
     }
 }

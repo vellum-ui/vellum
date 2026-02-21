@@ -35,7 +35,7 @@ pub fn prepare_ui() -> (UiSetup, masonry_winit::app::EventLoop) {
     // Build the event loop and extract a proxy before it starts running.
     let event_loop = masonry_winit::app::EventLoop::with_user_event()
         .build()
-        .expect("Failed to build event loop");
+        .unwrap_or_else(|e| panic!("Fatal: failed to build UI event loop: {e}"));
 
     let proxy = event_loop.create_proxy();
 
@@ -58,6 +58,7 @@ pub fn run_ui_blocking(
         .with_min_inner_size(LogicalSize::new(400.0, 300.0))
         .with_inner_size(window_size);
 
+    let error_sender = event_sender.clone();
     let driver = AppJsDriver::new(event_sender);
     let main_widget = create_initial_ui();
 
@@ -71,5 +72,13 @@ pub fn run_ui_blocking(
         driver,
         default_property_set(),
     )
-    .expect("Failed to run masonry application");
+    .unwrap_or_else(|e| {
+        let message = format!("Fatal UI runtime failure: {e}");
+        let _ = error_sender.send(crate::ipc::UiEvent::RuntimeError {
+            source: "ui-runtime".to_string(),
+            message: message.clone(),
+            fatal: true,
+        });
+        panic!("{message}");
+    });
 }

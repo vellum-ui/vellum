@@ -8,6 +8,12 @@ pub enum UiEvent {
         widget_id: String,
         action: WidgetActionKind,
     },
+    /// Runtime error emitted by Rust side and forwarded to JS.
+    RuntimeError {
+        source: String,
+        message: String,
+        fatal: bool,
+    },
 }
 
 /// Kind of widget action
@@ -15,4 +21,5 @@ pub enum UiEvent {
 pub enum WidgetActionKind {
     Click,
     ValueChanged(f64),
+    HoverChanged(bool),
 }

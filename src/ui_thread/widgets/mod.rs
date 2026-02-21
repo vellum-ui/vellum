@@ -3,6 +3,7 @@ pub mod checkbox;
 pub mod custom;
 pub mod flex;
 pub mod grid;
+pub mod hoverable;
 pub mod image;
 pub mod label;
 pub mod portal;

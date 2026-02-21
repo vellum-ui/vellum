@@ -24,6 +24,8 @@ export interface BoxStyle {
     background?: string;
     backgroundColor?: string;
     borderColor?: string;
+    hoveredBorderColor?: string;
+    hoverBorderColor?: string;
     borderWidth?: number;
     cornerRadius?: number;
     borderRadius?: number;

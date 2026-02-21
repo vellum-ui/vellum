@@ -164,6 +164,7 @@ pub struct BoxStyle {
     // -- Box / layout styles --
     pub background: Option<ColorValue>,
     pub border_color: Option<ColorValue>,
+    pub hover_border_color: Option<ColorValue>,
     pub border_width: Option<f64>,
     pub corner_radius: Option<f64>,
     pub padding: Option<PaddingValue>,

@@ -5,7 +5,7 @@ use masonry::parley::style::{
 use masonry::peniko::Color;
 use masonry::properties::types::{CrossAxisAlignment, Length, MainAxisAlignment};
 use masonry::properties::{
-    Background, BorderColor, BorderWidth, ContentColor, CornerRadius, Padding,
+    Background, BorderColor, BorderWidth, ContentColor, CornerRadius, HoveredBorderColor, Padding,
 };
 use masonry::widgets::Flex;
 
@@ -85,6 +85,9 @@ pub fn build_box_properties(style: &BoxStyle) -> Properties {
     if let Some(ref bc) = style.border_color {
         props = props.with(BorderColor::new(color_value_to_peniko(bc)));
     }
+    if let Some(ref hbc) = style.hover_border_color {
+        props = props.with(HoveredBorderColor(BorderColor::new(color_value_to_peniko(hbc))));
+    }
     if let Some(bw) = style.border_width {
         props = props.with(BorderWidth::all(bw));
     }
@@ -129,6 +132,9 @@ pub fn apply_box_props_to_widget(
     }
     if let Some(ref bc) = style.border_color {
         widget.insert_prop(BorderColor::new(color_value_to_peniko(bc)));
+    }
+    if let Some(ref hbc) = style.hover_border_color {
+        widget.insert_prop(HoveredBorderColor(BorderColor::new(color_value_to_peniko(hbc))));
     }
     if let Some(bw) = style.border_width {
         widget.insert_prop(BorderWidth::all(bw));

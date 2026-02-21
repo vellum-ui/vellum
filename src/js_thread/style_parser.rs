@@ -187,6 +187,9 @@ pub fn apply_style_property(style: &mut BoxStyle, key: &str, value: &str) -> boo
         "borderColor" | "border_color" => {
             style.border_color = ColorValue::parse(&unquote(value));
         }
+        "hoveredBorderColor" | "hovered_border_color" | "hoverBorderColor" | "hover_border_color" | "borderColorHover" | "border_color_hover" => {
+            style.hover_border_color = ColorValue::parse(&unquote(value));
+        }
         "borderWidth" | "border_width" => {
             style.border_width = value.trim_matches('"').parse::<f64>().ok();
         }

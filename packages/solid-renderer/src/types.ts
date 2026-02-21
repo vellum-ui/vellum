@@ -132,6 +132,7 @@ export interface AppJsCommonProps {
   visible?: boolean | (() => boolean);
   onClick?: WidgetActionHandler;
   onValueChanged?: WidgetActionHandler;
+  onHover?: WidgetActionHandler;
   onTextChanged?: WidgetActionHandler;
   onWidgetAction?: WidgetActionHandler;
   [key: string]: unknown;

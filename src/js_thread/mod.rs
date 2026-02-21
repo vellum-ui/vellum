@@ -4,12 +4,14 @@
 pub mod style_parser;
 
 use std::io::ErrorKind;
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
+use std::time::Duration;
 
 use crate::ipc::msgpack::{
     JsToRustMessage, RustToJsMessage, read_msgpack_frame, write_msgpack_frame,
 };
-use crate::ipc::{JsCommand, JsThreadChannels, WidgetData, WidgetKind};
+use crate::ipc::{JsCommand, JsThreadChannels, UiEvent, WidgetData, WidgetKind};
 use crate::socket::{bind_socket, get_socket_path};
 
 use self::style_parser::{extract_json_value, parse_json_bool, parse_json_f64, unquote};
@@ -21,6 +23,44 @@ use self::style_parser::{extract_json_value, parse_json_bool, parse_json_f64, un
 pub fn run_js_thread(channels: JsThreadChannels) {
     if let Err(e) = run_socket_server(channels) {
         eprintln!("[JS] Runtime socket error: {e}");
+    }
+}
+
+#[derive(Debug)]
+struct RuntimeErrorReport {
+    source: String,
+    message: String,
+    fatal: bool,
+}
+
+fn write_runtime_error(
+    stream: &mut impl std::io::Write,
+    source: impl Into<String>,
+    message: impl Into<String>,
+    fatal: bool,
+) -> std::io::Result<()> {
+    write_msgpack_frame(
+        stream,
+        &RustToJsMessage::RuntimeError {
+            source: source.into(),
+            message: message.into(),
+            fatal,
+        },
+    )
+}
+
+fn runtime_error_from_ui_event(event: UiEvent) -> RustToJsMessage {
+    match event {
+        UiEvent::RuntimeError {
+            source,
+            message,
+            fatal,
+        } => RustToJsMessage::RuntimeError {
+            source,
+            message,
+            fatal,
+        },
+        other => RustToJsMessage::UiEvent { event: other },
     }
 }
 
@@ -300,6 +340,7 @@ fn run_socket_server(
     println!("[JS] Client connected");
 
     let command_sender_clone = command_sender.clone();
+    let (error_tx, error_rx) = mpsc::channel::<RuntimeErrorReport>();
     let read_thread = thread::Builder::new()
         .name("js-bridge-read".to_string())
         .spawn(move || {
@@ -307,23 +348,69 @@ fn run_socket_server(
                 match read_msgpack_frame::<_, JsToRustMessage>(&mut read_stream) {
                     Ok(message) => {
                         if let Some(cmd) = handle_js_message(message) {
-                            let _ = command_sender_clone.send(cmd);
+                            if let Err(send_err) = command_sender_clone.send(cmd) {
+                                let _ = error_tx.send(RuntimeErrorReport {
+                                    source: "ui-thread".to_string(),
+                                    message: format!(
+                                        "Failed to dispatch JS command to UI thread: {send_err}"
+                                    ),
+                                    fatal: true,
+                                });
+                                break;
+                            }
                         }
                     }
                     Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
                     Err(e) => {
-                        eprintln!("[JS] Failed to decode MsgPack from socket: {e}");
-                        break;
+                        let _ = error_tx.send(RuntimeErrorReport {
+                            source: "socket-read".to_string(),
+                            message: format!("Failed to decode MsgPack command from JS: {e}"),
+                            fatal: false,
+                        });
                     }
                 }
             }
         })?;
 
-    for event in event_receiver {
-        let frame = RustToJsMessage::UiEvent { event };
-        if let Err(e) = write_msgpack_frame(&mut stream, &frame) {
-            eprintln!("[JS] Socket bridge write failed: {e}");
+    let mut should_stop = false;
+    while !should_stop {
+        loop {
+            match error_rx.try_recv() {
+                Ok(report) => {
+                    if let Err(write_err) = write_runtime_error(
+                        &mut stream,
+                        report.source,
+                        report.message,
+                        report.fatal,
+                    ) {
+                        eprintln!("[JS] Failed to send runtimeError frame to JS: {write_err}");
+                        should_stop = true;
+                        break;
+                    }
+                    if report.fatal {
+                        should_stop = true;
+                        break;
+                    }
+                }
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => break,
+            }
+        }
+
+        if should_stop {
             break;
+        }
+
+        match event_receiver.recv_timeout(Duration::from_millis(50)) {
+            Ok(event) => {
+                let frame = runtime_error_from_ui_event(event);
+                if let Err(e) = write_msgpack_frame(&mut stream, &frame) {
+                    eprintln!("[JS] Socket bridge write failed: {e}");
+                    break;
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => break,
         }
     }
 

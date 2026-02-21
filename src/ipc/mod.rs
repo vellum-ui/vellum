@@ -27,19 +27,17 @@ mod tests {
             widget_id: "test".to_string(),
             action: WidgetActionKind::Click,
         })
-        .expect("Failed to send UI event");
+        .unwrap();
 
-        let event = rx.recv().expect("Failed to receive UI event");
+        let event = rx.recv().unwrap();
 
-        match event {
-            UiEvent::WidgetAction { widget_id, action } => {
-                assert_eq!(widget_id, "test");
-                match action {
-                    WidgetActionKind::Click => {} // OK
-                    _ => panic!("Unexpected action type"),
-                }
-            }
-        }
+        assert!(matches!(
+            event,
+            UiEvent::WidgetAction {
+                widget_id,
+                action: WidgetActionKind::Click
+            } if widget_id == "test"
+        ));
     }
 
     #[test]

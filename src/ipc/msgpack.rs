@@ -9,6 +9,11 @@ use super::UiEvent;
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum RustToJsMessage {
     UiEvent { event: UiEvent },
+    RuntimeError {
+        source: String,
+        message: String,
+        fatal: bool,
+    },
     Shutdown,
 }
 
