@@ -8,14 +8,14 @@ pub enum JsCommand {
     /// Set the window title
     SetTitle(String),
 
-    /// Create a new widget with optional styling
+    /// Create a new widget with optional styling and widget-specific data
     CreateWidget {
         id: String,
         kind: WidgetKind,
         parent_id: Option<String>,
         text: Option<String>,
-        style: Option<WidgetStyle>,
-        params: Option<WidgetParams>,
+        style: Option<BoxStyle>,
+        data: Option<WidgetData>,
     },
 
     /// Remove a widget
@@ -28,7 +28,7 @@ pub enum JsCommand {
     SetWidgetVisible { id: String, visible: bool },
 
     /// Apply style to an existing widget
-    SetWidgetStyle { id: String, style: WidgetStyle },
+    SetWidgetStyle { id: String, style: BoxStyle },
 
     /// Set a single style property on a widget
     SetStyleProperty {
@@ -82,21 +82,75 @@ pub enum WidgetKind {
     Custom(String),
 }
 
-/// Widget-specific parameters that carry data beyond text/style.
-/// This enum allows each widget type to define its own creation data
-/// without bloating the generic CreateWidget message.
+/// Widget-specific initialization data.
+/// Each variant carries only the data relevant to that widget kind,
+/// ensuring type safety and preventing nonsensical combinations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum WidgetParams {
-    /// Raw image file bytes (PNG/JPEG/WebP/etc.) + optional object-fit mode
+pub enum WidgetData {
+    /// Label — no extra data (text comes from the `text` field)
+    Label,
+
+    /// Button — optional SVG icon data
+    Button { svg_data: Option<String> },
+
+    /// SVG widget
+    Svg { svg_data: Option<String> },
+
+    /// Image widget — raw image bytes + display mode
     Image {
         data: Vec<u8>,
         object_fit: Option<String>,
     },
+
+    /// Flex / Container layout (all layout fields come from BoxStyle)
+    Flex,
+
+    /// SizedBox — uses width/height from BoxStyle
+    SizedBox,
+
+    /// Checkbox initial state
+    Checkbox { checked: bool },
+
+    /// TextInput with placeholder
+    TextInput { placeholder: Option<String> },
+
+    /// TextArea — no extra data (text comes from the `text` field)
+    TextArea,
+
+    /// Prose — no extra data (text comes from the `text` field)
+    Prose,
+
+    /// ProgressBar initial value
+    ProgressBar { progress: Option<f64> },
+
+    /// Spinner — no extra data
+    Spinner,
+
+    /// Slider range and initial value
+    Slider {
+        min: f64,
+        max: f64,
+        value: f64,
+        step: Option<f64>,
+    },
+
+    /// ZStack — no extra data
+    ZStack,
+
+    /// Portal (scroll container) — no extra data
+    Portal,
+
+    /// Grid — no extra data (fallback to Flex)
+    Grid,
+
+    /// Custom widget
+    Custom(String),
 }
 
-/// Comprehensive styling that can be applied to widgets
+/// Shared box-model + text styling applied to any widget.
+/// Contains only layout and visual properties common to all widget types.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct WidgetStyle {
+pub struct BoxStyle {
     // -- Text styles --
     pub font_size: Option<f32>,
     pub font_weight: Option<f32>,
@@ -119,31 +173,15 @@ pub struct WidgetStyle {
     pub width: Option<f64>,
     pub height: Option<f64>,
 
-    // -- Flex-specific styles --
+    // -- Flex-child property (how this widget behaves inside a Flex parent) --
+    pub flex: Option<f64>,
+
+    // -- Flex container styles (for Flex/Container/Button inner layout) --
     pub direction: Option<FlexDirection>,
     pub cross_axis_alignment: Option<CrossAlign>,
     pub main_axis_alignment: Option<MainAlign>,
     pub gap: Option<f64>,
-    pub flex: Option<f64>,
     pub must_fill_main_axis: Option<bool>,
-
-    // -- Slider-specific --
-    pub min_value: Option<f64>,
-    pub max_value: Option<f64>,
-    pub step: Option<f64>,
-
-    // -- Checkbox --
-    pub checked: Option<bool>,
-
-    // -- ProgressBar --
-    pub progress: Option<f64>,
-
-    // -- TextInput --
-    pub placeholder: Option<String>,
-
-    // -- SVG/Image --
-    pub svg_data: Option<String>,
-    pub icon_size: Option<f64>,
 }
 
 /// Font style (normal vs italic)

@@ -27,7 +27,7 @@ export function createWidget(
     parentId: string | null,
     text: string | null,
     style: AppJsStyle | null,
-    params?: Record<string, unknown> | null,
+    params?: object | null,
     data?: Uint8Array | null
 ): void {
     bridge.send({

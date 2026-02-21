@@ -1,4 +1,15 @@
-import type { AppJsStyle, AppJsEvent } from "./types.ts";
+import type {
+    AppJsEvent,
+    AppJsStyle,
+    BoxStyle,
+    ButtonParams,
+    CheckboxParams,
+    ImageParams,
+    ProgressBarParams,
+    SliderParams,
+    SvgParams,
+    TextInputParams,
+} from "./types.ts";
 import {
     closeWindow,
     createWidget,
@@ -41,8 +52,8 @@ export const ui = {
         kind: string,
         parentId: string | null,
         text: string | null,
-        style: AppJsStyle | null,
-        params?: Record<string, unknown> | null,
+        style: BoxStyle | null,
+        params?: object | null,
         data?: Uint8Array | null
     ): void => createWidget(id, kind, parentId ?? null, text ?? null, style ?? null, params ?? null, data ?? null),
     removeWidget,
@@ -66,6 +77,7 @@ export const log = {
 };
 
 export { events };
+export type * from "./widgets/types.ts";
 
 export function label(id: string, parentId: string | null, text: string, style?: AppJsStyle): string {
     ui.createWidget(id, "label", parentId, text, style ?? null);
@@ -78,12 +90,14 @@ export function button(id: string, parentId: string | null, text: string, style?
 }
 
 export function iconButton(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
-    ui.createWidget(id, "iconButton", parentId, null, { ...style, svgData });
+    const params: ButtonParams = { svgData };
+    ui.createWidget(id, "iconButton", parentId, null, style ?? null, params);
     return id;
 }
 
 export function svg(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
-    ui.createWidget(id, "svg", parentId, svgData, style ?? null);
+    const params: SvgParams = { svgData };
+    ui.createWidget(id, "svg", parentId, null, style ?? null, params);
     return id;
 }
 
@@ -114,7 +128,8 @@ export function checkbox(
     text: string,
     style?: AppJsStyle
 ): string {
-    ui.createWidget(id, "checkbox", parentId, text, { ...style, checked: !!checked });
+    const params: CheckboxParams = { checked: !!checked };
+    ui.createWidget(id, "checkbox", parentId, text, style ?? null, params);
     return id;
 }
 
@@ -124,8 +139,8 @@ export function textInput(
     placeholder?: string,
     style?: AppJsStyle
 ): string {
-    const merged = placeholder ? { ...style, placeholder } : style;
-    ui.createWidget(id, "textInput", parentId, null, merged ?? null);
+    const params: TextInputParams | null = placeholder ? { placeholder } : null;
+    ui.createWidget(id, "textInput", parentId, null, style ?? null, params);
     return id;
 }
 
@@ -140,7 +155,8 @@ export function progressBar(
     progress?: number,
     style?: AppJsStyle
 ): string {
-    ui.createWidget(id, "progressBar", parentId, null, { ...style, progress: progress ?? 0 });
+    const params: ProgressBarParams = { progress: progress ?? 0 };
+    ui.createWidget(id, "progressBar", parentId, null, style ?? null, params);
     return id;
 }
 
@@ -155,9 +171,16 @@ export function slider(
     min: number,
     max: number,
     value: number,
-    style?: AppJsStyle
+    style?: AppJsStyle,
+    step?: number,
 ): string {
-    ui.createWidget(id, "slider", parentId, null, { ...style, minValue: min, maxValue: max, progress: value });
+    const params: SliderParams = {
+        minValue: min,
+        maxValue: max,
+        value,
+        ...(step !== undefined ? { step } : {}),
+    };
+    ui.createWidget(id, "slider", parentId, null, style ?? null, params);
     return id;
 }
 
@@ -172,7 +195,7 @@ export function portal(id: string, parentId: string | null, style?: AppJsStyle):
 }
 
 export { exit };
-export type { AppJsStyle, AppJsEvent };
+export type { AppJsStyle, AppJsEvent, BoxStyle };
 
 export function image(
     id: string,
@@ -182,7 +205,7 @@ export function image(
 ): string {
     const objectFit = style?.objectFit;
     const { objectFit: _of, ...restStyle } = style ?? {};
-    const paramsJson = objectFit ? { object_fit: objectFit } : null;
+    const paramsJson: ImageParams | null = objectFit ? { object_fit: objectFit } : null;
     ui.createWidget(
         id,
         "image",

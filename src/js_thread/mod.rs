@@ -9,8 +9,10 @@ use std::thread;
 use crate::ipc::msgpack::{
     JsToRustMessage, RustToJsMessage, read_msgpack_frame, write_msgpack_frame,
 };
-use crate::ipc::{JsCommand, JsThreadChannels, LogLevel, WidgetKind, WidgetParams};
+use crate::ipc::{JsCommand, JsThreadChannels, LogLevel, WidgetData, WidgetKind};
 use crate::socket::{bind_socket, get_socket_path};
+
+use self::style_parser::{extract_json_value, parse_json_bool, parse_json_f64, unquote};
 
 /// Run the JS runtime bridge on a background thread.
 ///
@@ -25,7 +27,7 @@ pub fn run_js_thread(channels: JsThreadChannels) {
 fn parse_widget_kind(kind: &str) -> WidgetKind {
     match kind {
         "Label" | "label" => WidgetKind::Label,
-        "Button" | "button" => WidgetKind::Button,
+        "Button" | "button" | "iconButton" | "icon_button" => WidgetKind::Button,
         "Svg" | "svg" | "svgIcon" | "svg_icon" | "icon" => WidgetKind::Svg,
         "TextInput" | "textInput" | "text_input" => WidgetKind::TextInput,
         "TextArea" | "textArea" | "text_area" => WidgetKind::TextArea,
@@ -68,7 +70,12 @@ fn handle_js_message(message: JsToRustMessage) -> Option<JsCommand> {
             data,
         } => {
             let parsed_kind = parse_widget_kind(&kind);
-            let params = build_widget_params(&parsed_kind, widget_params_json.as_deref(), data);
+            let widget_data = build_widget_data(
+                &parsed_kind,
+                style_json.as_deref(),
+                widget_params_json.as_deref(),
+                data,
+            );
             Some(JsCommand::CreateWidget {
                 id,
                 kind: parsed_kind,
@@ -77,7 +84,7 @@ fn handle_js_message(message: JsToRustMessage) -> Option<JsCommand> {
                 style: style_json
                     .as_deref()
                     .and_then(style_parser::parse_style_json),
-                params,
+                data: widget_data,
             })
         }
         JsToRustMessage::RemoveWidget { id } => Some(JsCommand::RemoveWidget { id }),
@@ -121,24 +128,173 @@ fn handle_js_message(message: JsToRustMessage) -> Option<JsCommand> {
     }
 }
 
-/// Build widget-specific params from the binary data field and optional JSON metadata
-fn build_widget_params(
+/// Build widget-specific data from params JSON and binary data.
+///
+/// For backward compatibility, some widget-specific fields are also read from
+/// `style_json` when params are absent. Flex/container layout fields are no
+/// longer parsed here and are sourced entirely from `BoxStyle`.
+fn build_widget_data(
     kind: &WidgetKind,
+    style_json: Option<&str>,
     params_json: Option<&str>,
     data: Option<Vec<u8>>,
-) -> Option<WidgetParams> {
+) -> Option<WidgetData> {
+    let params_value = params_json.and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok());
+
+    let params_string = |key: &str| -> Option<String> {
+        params_value
+            .as_ref()
+            .and_then(|v| v.get(key))
+            .and_then(|v| v.as_str())
+            .map(String::from)
+    };
+    let params_bool = |key: &str| -> Option<bool> {
+        params_value
+            .as_ref()
+            .and_then(|v| v.get(key))
+            .and_then(|v| v.as_bool())
+    };
+    let params_f64 = |key: &str| -> Option<f64> {
+        params_value
+            .as_ref()
+            .and_then(|v| v.get(key))
+            .and_then(|v| v.as_f64())
+    };
+
     match kind {
+        WidgetKind::Label => Some(WidgetData::Label),
+
+        WidgetKind::Button => {
+            let svg_data = params_string("svgData")
+                .or_else(|| params_string("svg_data"))
+                .or_else(|| style_json
+                .and_then(|s| extract_json_value(s, "svgData"))
+                .or_else(|| style_json.and_then(|s| extract_json_value(s, "svg_data")))
+                .map(|v| unquote(&v)));
+            Some(WidgetData::Button { svg_data })
+        }
+
+        WidgetKind::Svg => {
+            let svg_data = params_string("svgData")
+                .or_else(|| params_string("svg_data"))
+                .or_else(|| style_json
+                .and_then(|s| extract_json_value(s, "svgData"))
+                .or_else(|| style_json.and_then(|s| extract_json_value(s, "svg_data")))
+                .or_else(|| style_json.and_then(|s| extract_json_value(s, "svg")))
+                .map(|v| unquote(&v)));
+            Some(WidgetData::Svg { svg_data })
+        }
+
         WidgetKind::Image => {
             let image_data = data?;
-            let object_fit = params_json
-                .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
-                .and_then(|v| v.get("object_fit")?.as_str().map(String::from));
-            Some(WidgetParams::Image {
+            let object_fit = params_string("object_fit");
+            Some(WidgetData::Image {
                 data: image_data,
                 object_fit,
             })
         }
-        _ => None,
+
+        WidgetKind::Flex | WidgetKind::Container => Some(WidgetData::Flex),
+
+        WidgetKind::SizedBox => Some(WidgetData::SizedBox),
+
+        WidgetKind::Checkbox => {
+            let checked = params_bool("checked")
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| extract_json_value(s, "checked"))
+                        .and_then(|v| parse_json_bool(&v))
+                })
+                .unwrap_or(false);
+            Some(WidgetData::Checkbox { checked })
+        }
+
+        WidgetKind::TextInput => {
+            let placeholder = params_string("placeholder").or_else(|| {
+                style_json
+                    .and_then(|s| extract_json_value(s, "placeholder"))
+                    .map(|v| unquote(&v))
+            });
+            Some(WidgetData::TextInput { placeholder })
+        }
+
+        WidgetKind::TextArea => Some(WidgetData::TextArea),
+        WidgetKind::Prose => Some(WidgetData::Prose),
+
+        WidgetKind::ProgressBar => {
+            let progress = params_f64("progress")
+                .or_else(|| params_f64("value"))
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| extract_json_value(s, "progress"))
+                        .and_then(|v| parse_json_f64(&v))
+                })
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| extract_json_value(s, "value"))
+                        .and_then(|v| parse_json_f64(&v))
+                });
+            Some(WidgetData::ProgressBar { progress })
+        }
+
+        WidgetKind::Spinner => Some(WidgetData::Spinner),
+
+        WidgetKind::Slider => {
+            let min = params_f64("minValue")
+                .or_else(|| params_f64("min_value"))
+                .or_else(|| params_f64("min"))
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| {
+                            extract_json_value(s, "minValue")
+                                .or_else(|| extract_json_value(s, "min_value"))
+                                .or_else(|| extract_json_value(s, "min"))
+                        })
+                        .and_then(|v| parse_json_f64(&v))
+                })
+                .unwrap_or(0.0);
+            let max = params_f64("maxValue")
+                .or_else(|| params_f64("max_value"))
+                .or_else(|| params_f64("max"))
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| {
+                            extract_json_value(s, "maxValue")
+                                .or_else(|| extract_json_value(s, "max_value"))
+                                .or_else(|| extract_json_value(s, "max"))
+                        })
+                        .and_then(|v| parse_json_f64(&v))
+                })
+                .unwrap_or(1.0);
+            let value = params_f64("value")
+                .or_else(|| params_f64("progress"))
+                .or_else(|| {
+                    style_json
+                        .and_then(|s| {
+                            extract_json_value(s, "progress")
+                                .or_else(|| extract_json_value(s, "value"))
+                        })
+                        .and_then(|v| parse_json_f64(&v))
+                })
+                .unwrap_or(0.5);
+            let step = params_f64("step").or_else(|| {
+                style_json
+                    .and_then(|s| extract_json_value(s, "step"))
+                    .and_then(|v| parse_json_f64(&v))
+            });
+            Some(WidgetData::Slider {
+                min,
+                max,
+                value,
+                step,
+            })
+        }
+
+        WidgetKind::ZStack => Some(WidgetData::ZStack),
+        WidgetKind::Portal => Some(WidgetData::Portal),
+        WidgetKind::Grid => Some(WidgetData::Grid),
+
+        WidgetKind::Custom(name) => Some(WidgetData::Custom(name.clone())),
     }
 }
 

@@ -5,8 +5,8 @@ use masonry::peniko::Color;
 use masonry::properties::ContentColor;
 use masonry::widgets::Label;
 
+use crate::ipc::BoxStyle;
 use crate::ipc::WidgetKind;
-use crate::ipc::WidgetStyle;
 use crate::ui_thread::styles::{build_box_properties, build_text_styles};
 use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
 use crate::ui_thread::widgets::utils::add_to_parent;
@@ -17,7 +17,7 @@ pub fn create(
     id: String,
     parent_id: Option<String>,
     text: Option<String>,
-    style: Option<WidgetStyle>,
+    style: Option<BoxStyle>,
     child_index: usize,
     widget_id: WidgetId,
 ) {
@@ -25,7 +25,6 @@ pub fn create(
     let mut label = Label::new(label_text);
     let style_ref = style.as_ref();
 
-    // Apply text styles
     let text_styles = style_ref.map(build_text_styles).unwrap_or_else(|| {
         vec![
             StyleProperty::FontSize(30.0),

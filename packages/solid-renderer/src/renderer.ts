@@ -125,7 +125,9 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
   } {
     const kind = normalizeWidgetKind(node.tag);
     const style = createEmptyStyle();
+    const params: Record<string, unknown> = Object.create(null);
     let hasStyle = false;
+    let hasParams = false;
     let text: string | null = null;
 
     if (node.tag === "row") {
@@ -151,14 +153,42 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       }
 
       if (name === "checked") {
-        style.checked = Boolean(value);
-        hasStyle = true;
+        if (kind === "checkbox") {
+          params.checked = Boolean(value);
+          hasParams = true;
+        }
         continue;
       }
 
       if (name === "value" && typeof value === "number") {
-        style.progress = value;
-        hasStyle = true;
+        if (kind === "slider" || kind === "progressBar") {
+          params.value = value;
+          hasParams = true;
+        }
+        continue;
+      }
+
+      if (name === "min" && typeof value === "number" && kind === "slider") {
+        params.minValue = value;
+        hasParams = true;
+        continue;
+      }
+
+      if (name === "max" && typeof value === "number" && kind === "slider") {
+        params.maxValue = value;
+        hasParams = true;
+        continue;
+      }
+
+      if (name === "step" && typeof value === "number" && kind === "slider") {
+        params.step = value;
+        hasParams = true;
+        continue;
+      }
+
+      if (name === "placeholder" && typeof value === "string" && kind === "textInput") {
+        params.placeholder = value;
+        hasParams = true;
         continue;
       }
 
@@ -175,7 +205,6 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
     }
 
     // Extract image-specific props
-    let params: Record<string, unknown> | null = null;
     let data: Uint8Array | null = null;
 
     if (kind === "image") {
@@ -185,15 +214,21 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       }
       const objectFit = node.props.objectFit;
       if (typeof objectFit === "string") {
-        params = { object_fit: objectFit };
+        params.object_fit = objectFit;
+        hasParams = true;
       }
+    }
+
+    if (kind === "progressBar" && params.value !== undefined && params.progress === undefined) {
+      params.progress = params.value;
+      delete params.value;
     }
 
     return {
       kind,
       text,
       style: hasStyle ? style : null,
-      params,
+      params: hasParams ? params : null,
       data,
     };
   }
@@ -227,6 +262,10 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
 
     if (name === "value" && typeof value === "number") {
       runtime.ui.setValue(node.widgetId, value);
+      return;
+    }
+
+    if (name === "min" || name === "max" || name === "step" || name === "placeholder") {
       return;
     }
 
@@ -495,10 +534,13 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
   });
 
   function render(code: () => unknown, options?: RenderOptions | AppJsRoot): AppJsRoot {
-    const root =
-      options && "nodeType" in options
-        ? options
-        : createRoot(options?.parentId ?? DEFAULT_PARENT_ID);
+    let root: AppJsRoot;
+    if (options && "nodeType" in options) {
+      root = options;
+    } else {
+      const renderOptions = options as RenderOptions | undefined;
+      root = createRoot(renderOptions?.parentId ?? DEFAULT_PARENT_ID);
+    }
 
     renderer.render(code as () => HostNode | AppJsRoot, root);
     return root;

@@ -9,7 +9,7 @@ use masonry::properties::{
 };
 use masonry::widgets::Flex;
 
-use crate::ipc::{ColorValue, CrossAlign, FontStyleValue, MainAlign, PaddingValue, WidgetStyle};
+use crate::ipc::{BoxStyle, ColorValue, CrossAlign, FontStyleValue, MainAlign, PaddingValue};
 
 // ── Color conversion helper ──
 
@@ -27,7 +27,7 @@ pub fn color_value_to_peniko(cv: &ColorValue) -> Color {
 // ── Style application helpers ──
 
 /// Apply text-related StyleProperty items to a builder that supports `with_style`
-pub fn build_text_styles(style: &WidgetStyle) -> Vec<StyleProperty> {
+pub fn build_text_styles(style: &BoxStyle) -> Vec<StyleProperty> {
     let mut props = Vec::new();
 
     if let Some(size) = style.font_size {
@@ -73,7 +73,7 @@ pub fn build_text_styles(style: &WidgetStyle) -> Vec<StyleProperty> {
 }
 
 /// Build a Properties set with box-model styling
-pub fn build_box_properties(style: &WidgetStyle) -> Properties {
+pub fn build_box_properties(style: &BoxStyle) -> Properties {
     let mut props = Properties::new();
 
     if let Some(ref color) = style.color {
@@ -119,7 +119,7 @@ pub fn build_box_properties(style: &WidgetStyle) -> Properties {
 /// Works on any WidgetMut that implements HasProperty for the relevant properties.
 pub fn apply_box_props_to_widget(
     widget: &mut masonry::core::WidgetMut<'_, impl masonry::core::Widget>,
-    style: &WidgetStyle,
+    style: &BoxStyle,
 ) {
     if let Some(ref color) = style.color {
         widget.insert_prop(ContentColor::new(color_value_to_peniko(color)));
@@ -159,7 +159,7 @@ pub fn apply_box_props_to_widget(
 }
 
 /// Apply style to a Flex widget (root or otherwise). Handles box props + flex-specific props.
-pub fn apply_flex_style(flex: &mut masonry::core::WidgetMut<'_, Flex>, style: &WidgetStyle) {
+pub fn apply_flex_style(flex: &mut masonry::core::WidgetMut<'_, Flex>, style: &BoxStyle) {
     apply_box_props_to_widget(flex, style);
 
     if let Some(ref ca) = style.cross_axis_alignment {

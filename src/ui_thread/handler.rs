@@ -4,7 +4,7 @@ use masonry::widgets::{Button, Checkbox, Flex, Label, ProgressBar, Prose, Slider
 use masonry_winit::app::WindowId;
 use winit::dpi::PhysicalSize;
 
-use crate::ipc::{JsCommand, LogLevel, UiEventSender, WidgetKind, WidgetStyle};
+use crate::ipc::{BoxStyle, JsCommand, LogLevel, UiEventSender, WidgetKind};
 
 use super::creation::create_and_add_widget;
 use super::styles::{apply_box_props_to_widget, apply_flex_style, build_text_styles};
@@ -31,7 +31,7 @@ pub fn handle_js_command(
             parent_id,
             text,
             style,
-            params,
+            data,
         } => {
             create_and_add_widget(
                 render_root,
@@ -41,7 +41,7 @@ pub fn handle_js_command(
                 parent_id,
                 text,
                 style,
-                params,
+                data,
             );
         }
 
@@ -179,10 +179,6 @@ pub fn handle_js_command(
                         render_root.edit_widget(widget_id, |mut widget| {
                             let mut svg_widget = widget.downcast::<SvgWidget>();
                             apply_box_props_to_widget(&mut svg_widget, &style);
-                            if let Some(svg) = style.svg_data.as_deref() {
-                                let svg_markup = svg.to_string();
-                                SvgWidget::set_svg_source(&mut svg_widget, svg_markup);
-                            }
                         });
                     }
                     WidgetKind::Flex | WidgetKind::Container => {
@@ -192,20 +188,17 @@ pub fn handle_js_command(
                         });
                     }
                     WidgetKind::ProgressBar => {
-                        if let Some(progress) = style.progress {
-                            render_root.edit_widget(widget_id, |mut widget| {
-                                let mut pbar = widget.downcast::<ProgressBar>();
-                                ProgressBar::set_progress(&mut pbar, Some(progress));
-                            });
-                        }
+                        // ProgressBar value changes are handled via SetWidgetValue
+                        render_root.edit_widget(widget_id, |mut widget| {
+                            let mut pbar = widget.downcast::<ProgressBar>();
+                            apply_box_props_to_widget(&mut pbar, &style);
+                        });
                     }
                     WidgetKind::Slider => {
-                        if let Some(val) = style.progress {
-                            render_root.edit_widget(widget_id, |mut widget| {
-                                let mut slider = widget.downcast::<Slider>();
-                                Slider::set_value(&mut slider, val);
-                            });
-                        }
+                        render_root.edit_widget(widget_id, |mut widget| {
+                            let mut slider = widget.downcast::<Slider>();
+                            apply_box_props_to_widget(&mut slider, &style);
+                        });
                     }
                     _ => {
                         println!(
@@ -229,7 +222,7 @@ pub fn handle_js_command(
                 id, property, value
             );
             // Build a partial style and delegate
-            let mut style = WidgetStyle::default();
+            let mut style = BoxStyle::default();
             let quoted_value = if value.starts_with('"') {
                 value.clone()
             } else {

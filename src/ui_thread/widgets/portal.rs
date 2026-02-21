@@ -2,8 +2,7 @@ use masonry::app::RenderRoot;
 use masonry::core::{NewWidget, Properties, WidgetId, WidgetOptions};
 use masonry::widgets::{Flex, Portal};
 
-use crate::ipc::WidgetKind;
-use crate::ipc::WidgetStyle;
+use crate::ipc::{BoxStyle, WidgetKind};
 use crate::ui_thread::styles::build_box_properties;
 use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
 use crate::ui_thread::widgets::utils::add_to_parent;
@@ -13,18 +12,19 @@ pub fn create(
     widget_manager: &mut WidgetManager,
     id: String,
     parent_id: Option<String>,
-    style: Option<WidgetStyle>,
+    style: Option<BoxStyle>,
     child_index: usize,
     widget_id: WidgetId,
 ) {
-    // Portal wraps a Flex column for scrolling
+    let style_ref = style.as_ref();
     let inner_flex = Flex::column();
     let portal = Portal::new(NewWidget::new(inner_flex));
-    let style_ref = style.as_ref();
+
     let props = style_ref
         .map(build_box_properties)
         .unwrap_or_else(Properties::new);
     let new_widget = NewWidget::new_with(portal, widget_id, WidgetOptions::default(), props);
+
     if add_to_parent(
         render_root,
         widget_manager,
@@ -32,6 +32,7 @@ pub fn create(
         new_widget,
         style_ref.and_then(|s| s.flex),
     ) {
+        widget_manager.child_counts.insert(id.clone(), 0);
         widget_manager.widgets.insert(
             id,
             WidgetInfo {

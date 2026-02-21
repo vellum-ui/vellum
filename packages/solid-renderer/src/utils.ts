@@ -15,6 +15,9 @@ export function normalizeEventName(propName: string): string | null {
 
 export function normalizeWidgetKind(tag: string): string {
   switch (tag) {
+    case "iconButton":
+    case "icon_button":
+      return "button";
     case "row":
     case "column":
       return "flex";

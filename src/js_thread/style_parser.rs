@@ -1,20 +1,17 @@
 use crate::ipc::{
-    ColorValue, CrossAlign, FlexDirection, FontStyleValue, MainAlign, PaddingValue, TextAlignValue,
-    WidgetStyle,
+    BoxStyle, ColorValue, CrossAlign, FlexDirection, FontStyleValue, MainAlign, PaddingValue,
+    TextAlignValue,
 };
 
-/// Parse a JSON-encoded style object into WidgetStyle
-pub fn parse_style_json(json_str: &str) -> Option<WidgetStyle> {
-    // We do manual JSON parsing since we don't have serde in scope.
-    // The JS side sends a flat JSON object with known keys.
+/// Parse a JSON-encoded style object into BoxStyle
+pub fn parse_style_json(json_str: &str) -> Option<BoxStyle> {
     let json_str = json_str.trim();
     if json_str.is_empty() || json_str == "{}" || json_str == "null" {
         return None;
     }
 
-    let mut style = WidgetStyle::default();
+    let mut style = BoxStyle::default();
 
-    // Simple key-value extraction from JSON. Only handles flat objects with string/number/bool values.
     let inner = json_str
         .trim_start_matches('{')
         .trim_end_matches('}')
@@ -23,7 +20,6 @@ pub fn parse_style_json(json_str: &str) -> Option<WidgetStyle> {
         return None;
     }
 
-    // Parse key-value pairs from the JSON string
     let mut has_any = false;
     for pair in split_json_pairs(inner) {
         let pair = pair.trim();
@@ -31,12 +27,39 @@ pub fn parse_style_json(json_str: &str) -> Option<WidgetStyle> {
             continue;
         }
         if let Some((key, value)) = parse_json_kv(pair) {
-            has_any = true;
-            apply_style_property(&mut style, &key, &value);
+            if apply_style_property(&mut style, &key, &value) {
+                has_any = true;
+            }
         }
     }
 
     if has_any { Some(style) } else { None }
+}
+
+/// Extract a single widget-specific property value from a JSON string.
+/// Returns None if the key is not found.
+pub fn extract_json_value(json_str: &str, target_key: &str) -> Option<String> {
+    let inner = json_str
+        .trim()
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .trim();
+    if inner.is_empty() {
+        return None;
+    }
+
+    for pair in split_json_pairs(inner) {
+        let pair = pair.trim();
+        if pair.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = parse_json_kv(pair) {
+            if key == target_key {
+                return Some(value);
+            }
+        }
+    }
+    None
 }
 
 /// Split JSON pairs at top-level commas (not inside nested braces/strings)
@@ -94,8 +117,9 @@ pub fn unquote(s: &str) -> String {
     }
 }
 
-/// Apply a single style property to a WidgetStyle
-pub fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
+/// Apply a single style property to a BoxStyle.
+/// Returns true if the property was recognized and applied.
+pub fn apply_style_property(style: &mut BoxStyle, key: &str, value: &str) -> bool {
     let value = value.trim();
     match key {
         // Text styles
@@ -173,7 +197,6 @@ pub fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
             if let Ok(v) = value.trim_matches('"').parse::<f64>() {
                 style.padding = Some(PaddingValue::Uniform(v));
             } else {
-                // Try parsing as {top, right, bottom, left} object
                 let inner = unquote(value);
                 if inner.contains(',') {
                     let parts: Vec<f64> = inner
@@ -210,7 +233,12 @@ pub fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
             style.height = value.trim_matches('"').parse::<f64>().ok();
         }
 
-        // Flex styles
+        // Flex-child property
+        "flex" | "flexGrow" | "flex_grow" => {
+            style.flex = value.trim_matches('"').parse::<f64>().ok();
+        }
+
+        // Flex container styles (also applied via BoxStyle for runtime updates)
         "direction" | "flexDirection" | "flex_direction" => {
             style.direction = match unquote(value).to_lowercase().as_str() {
                 "row" | "horizontal" => Some(FlexDirection::Row),
@@ -242,43 +270,18 @@ pub fn apply_style_property(style: &mut WidgetStyle, key: &str, value: &str) {
         "gap" => {
             style.gap = value.trim_matches('"').parse::<f64>().ok();
         }
-        "flex" | "flexGrow" | "flex_grow" => {
-            style.flex = value.trim_matches('"').parse::<f64>().ok();
-        }
         "mustFillMainAxis" | "must_fill_main_axis" => {
             style.must_fill_main_axis = parse_json_bool(value);
         }
 
-        // Widget-specific
-        "minValue" | "min_value" | "min" => {
-            style.min_value = value.trim_matches('"').parse::<f64>().ok();
-        }
-        "maxValue" | "max_value" | "max" => {
-            style.max_value = value.trim_matches('"').parse::<f64>().ok();
-        }
-        "step" => {
-            style.step = value.trim_matches('"').parse::<f64>().ok();
-        }
-        "checked" => {
-            style.checked = parse_json_bool(value);
-        }
-        "progress" | "value" => {
-            style.progress = value.trim_matches('"').parse::<f64>().ok();
-        }
-        "placeholder" => {
-            style.placeholder = Some(unquote(value));
-        }
-        "svg" | "svgData" | "svg_data" => {
-            style.svg_data = Some(unquote(value));
-        }
-        "iconSize" | "icon_size" => {
-            style.icon_size = value.trim_matches('"').parse::<f64>().ok();
-        }
-
+        // Widget-specific properties are NOT handled here anymore.
+        // They are parsed per-widget in build_widget_data().
+        // We still return false so callers know this wasn't a recognized style prop.
         _ => {
-            eprintln!("[JS] Unknown style property: {} = {}", key, value);
+            return false;
         }
     }
+    true
 }
 
 pub fn parse_json_bool(s: &str) -> Option<bool> {
@@ -288,4 +291,8 @@ pub fn parse_json_bool(s: &str) -> Option<bool> {
         "false" => Some(false),
         _ => None,
     }
+}
+
+pub fn parse_json_f64(s: &str) -> Option<f64> {
+    s.trim().trim_matches('"').parse::<f64>().ok()
 }

@@ -137,14 +137,38 @@ export interface AppJsCommonProps {
   [key: string]: unknown;
 }
 
+export interface SliderProps extends AppJsCommonProps {
+  min?: number | (() => number);
+  max?: number | (() => number);
+  step?: number | (() => number);
+  value?: number | (() => number);
+}
+
+export interface CheckboxProps extends AppJsCommonProps {
+  checked?: boolean | (() => boolean);
+}
+
+export interface ProgressBarProps extends AppJsCommonProps {
+  value?: number | (() => number);
+}
+
+export interface TextInputProps extends AppJsCommonProps {
+  placeholder?: string | (() => string);
+}
+
+export interface ImageProps extends AppJsCommonProps {
+  data?: Uint8Array | (() => Uint8Array);
+  objectFit?: string | (() => string);
+}
+
 export type AppJsIntrinsicElements = {
   [tagName: string]: AppJsCommonProps;
   label: AppJsCommonProps;
   button: AppJsCommonProps;
-  checkbox: AppJsCommonProps;
-  textInput: AppJsCommonProps;
-  slider: AppJsCommonProps;
-  progressBar: AppJsCommonProps;
+  checkbox: CheckboxProps;
+  textInput: TextInputProps;
+  slider: SliderProps;
+  progressBar: ProgressBarProps;
   spinner: AppJsCommonProps;
   prose: AppJsCommonProps;
   flex: AppJsCommonProps;
@@ -153,7 +177,7 @@ export type AppJsIntrinsicElements = {
   box: AppJsCommonProps;
   zstack: AppJsCommonProps;
   portal: AppJsCommonProps;
-  image: AppJsCommonProps & { data?: Uint8Array | (() => Uint8Array); objectFit?: string };
+  image: ImageProps;
 };
 
 // Types for JSX namespace

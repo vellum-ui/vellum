@@ -4,7 +4,7 @@ use masonry::peniko::{ImageAlphaType, ImageData, ImageFormat};
 use masonry::properties::ObjectFit;
 use masonry::widgets::Image;
 
-use crate::ipc::{WidgetKind, WidgetParams, WidgetStyle};
+use crate::ipc::{BoxStyle, WidgetData, WidgetKind};
 use crate::ui_thread::styles::build_box_properties;
 use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
 use crate::ui_thread::widgets::utils::add_to_parent;
@@ -47,15 +47,19 @@ pub fn create(
     widget_manager: &mut WidgetManager,
     id: String,
     parent_id: Option<String>,
-    style: Option<WidgetStyle>,
-    params: Option<WidgetParams>,
+    style: Option<BoxStyle>,
+    data: Option<WidgetData>,
     child_index: usize,
     widget_id: WidgetId,
 ) {
-    let image_data_bytes = match &params {
-        Some(WidgetParams::Image { data, .. }) => data.as_slice(),
+    // Extract image-specific data from WidgetData
+    let (image_data_bytes, object_fit_str) = match &data {
+        Some(WidgetData::Image { data, object_fit }) => (data.as_slice(), object_fit.clone()),
         _ => {
-            eprintln!("[UI] Image widget '{}' missing image data in params", id);
+            eprintln!(
+                "[UI] Image widget '{}' missing image data in WidgetData",
+                id
+            );
             return;
         }
     };
@@ -68,13 +72,10 @@ pub fn create(
         }
     };
 
-    let object_fit = match &params {
-        Some(WidgetParams::Image { object_fit, .. }) => object_fit
-            .as_deref()
-            .map(parse_object_fit)
-            .unwrap_or(ObjectFit::Contain),
-        _ => ObjectFit::Contain,
-    };
+    let object_fit = object_fit_str
+        .as_deref()
+        .map(parse_object_fit)
+        .unwrap_or(ObjectFit::Contain);
 
     let style_ref = style.as_ref();
     let mut props = style_ref

@@ -3,7 +3,7 @@ use masonry::core::WidgetId;
 
 use super::widget_manager::WidgetManager;
 use super::widgets;
-use crate::ipc::{WidgetKind, WidgetParams, WidgetStyle};
+use crate::ipc::{BoxStyle, WidgetData, WidgetKind};
 
 pub fn create_and_add_widget(
     render_root: &mut RenderRoot,
@@ -12,8 +12,8 @@ pub fn create_and_add_widget(
     kind: WidgetKind,
     parent_id: Option<String>,
     text: Option<String>,
-    style: Option<WidgetStyle>,
-    params: Option<WidgetParams>,
+    style: Option<BoxStyle>,
+    data: Option<WidgetData>,
 ) {
     println!(
         "[UI] Creating widget: id={}, kind={:?}, parent={:?}",
@@ -45,6 +45,7 @@ pub fn create_and_add_widget(
                 parent_id,
                 text,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -57,6 +58,7 @@ pub fn create_and_add_widget(
                 parent_id,
                 text,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -69,6 +71,7 @@ pub fn create_and_add_widget(
                 kind,
                 parent_id,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -92,6 +95,7 @@ pub fn create_and_add_widget(
                 parent_id,
                 text,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -104,6 +108,7 @@ pub fn create_and_add_widget(
                 parent_id,
                 text,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -139,6 +144,7 @@ pub fn create_and_add_widget(
                 id,
                 parent_id,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -161,6 +167,7 @@ pub fn create_and_add_widget(
                 id,
                 parent_id,
                 style,
+                data,
                 child_index,
                 widget_id,
             );
@@ -218,7 +225,7 @@ pub fn create_and_add_widget(
                 id,
                 parent_id,
                 style,
-                params,
+                data,
                 child_index,
                 widget_id,
             );

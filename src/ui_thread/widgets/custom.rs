@@ -5,8 +5,8 @@ use masonry::peniko::Color;
 use masonry::properties::ContentColor;
 use masonry::widgets::Label;
 
-use crate::ipc::WidgetKind;
-use crate::ipc::WidgetStyle;
+use crate::ipc::{BoxStyle, WidgetKind};
+use crate::ui_thread::styles::{build_box_properties, build_text_styles};
 use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
 use crate::ui_thread::widgets::utils::add_to_parent;
 
@@ -17,39 +17,45 @@ pub fn create(
     kind: WidgetKind,
     parent_id: Option<String>,
     text: Option<String>,
-    style: Option<WidgetStyle>,
+    style: Option<BoxStyle>,
     child_index: usize,
     widget_id: WidgetId,
 ) {
-    eprintln!(
-        "[UI] Widget kind {:?} not recognized, creating Label as fallback",
-        kind
-    );
-    let fallback = format!("[{:?}]", kind);
-    let label_text = text.as_deref().unwrap_or(&fallback);
-    let label = Label::new(label_text)
-        .with_style(StyleProperty::FontSize(20.0))
-        .with_style(StyleProperty::FontStack(FontStack::Single(
-            FontFamily::Generic(GenericFamily::SansSerif),
-        )));
-    let new_widget = NewWidget::new_with(
-        label,
-        widget_id,
-        WidgetOptions::default(),
-        Properties::new().with(ContentColor::new(Color::WHITE)),
-    );
+    let style_ref = style.as_ref();
+    // Custom widgets default to a Label for now
+    let label_text = text.unwrap_or_else(|| format!("[{:?}]", kind));
+
+    let text_styles: Vec<StyleProperty> = style_ref.map(build_text_styles).unwrap_or_else(|| {
+        vec![
+            StyleProperty::FontSize(16.0),
+            StyleProperty::FontStack(FontStack::Single(FontFamily::Generic(
+                GenericFamily::SansSerif,
+            ))),
+        ]
+    });
+
+    let mut label = Label::new(label_text);
+    for s in &text_styles {
+        label = label.with_style(s.clone());
+    }
+
+    let props = style_ref
+        .map(build_box_properties)
+        .unwrap_or_else(|| Properties::new().with(ContentColor::new(Color::WHITE)));
+    let new_widget = NewWidget::new_with(label, widget_id, WidgetOptions::default(), props);
+
     if add_to_parent(
         render_root,
         widget_manager,
         &parent_id,
         new_widget,
-        style.and_then(|s| s.flex),
+        style_ref.and_then(|s| s.flex),
     ) {
         widget_manager.widgets.insert(
             id,
             WidgetInfo {
                 widget_id,
-                kind: kind.clone(),
+                kind,
                 parent_id: parent_id.clone(),
                 child_index,
             },
