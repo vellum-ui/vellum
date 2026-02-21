@@ -14,7 +14,6 @@ import {
     closeWindow,
     createWidget,
     exit,
-    log as writeLog,
     removeWidget,
     resizeWindow,
     setImageData,
@@ -67,13 +66,6 @@ export const ui = {
 
     setWidgetText,
     setWidgetVisible,
-};
-
-export const log = {
-    debug: (msg: string): void => writeLog("debug", msg),
-    info: (msg: string): void => writeLog("info", msg),
-    warn: (msg: string): void => writeLog("warn", msg),
-    error: (msg: string): void => writeLog("error", msg),
 };
 
 export { events };
@@ -223,7 +215,6 @@ export const app = {
     body,
     ui,
     events,
-    log,
     nextId,
     label,
     button,

@@ -74,10 +74,6 @@ export function setStyleProperty(
     bridge.send({ type: "setStyleProperty", id, property, value: String(value) });
 }
 
-export function log(level: "debug" | "info" | "warn" | "error", message: string): void {
-    bridge.send({ type: "log", level, message: String(message) });
-}
-
 export function exit(): void {
     bridge.send({ type: "exitApp" });
 }

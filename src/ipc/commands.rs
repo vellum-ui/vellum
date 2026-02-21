@@ -52,9 +52,6 @@ pub enum JsCommand {
     /// Request window close
     CloseWindow,
 
-    /// Log a message (for debugging)
-    Log { level: LogLevel, message: String },
-
     /// Request to exit the application
     ExitApp,
 }
@@ -238,15 +235,6 @@ pub enum PaddingValue {
         bottom: f64,
         left: f64,
     },
-}
-
-/// Log levels for debugging
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warn,
-    Error,
 }
 
 /// Wrapper around JsCommand that can be sent as an ErasedAction through the EventLoopProxy.

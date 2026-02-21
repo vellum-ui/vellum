@@ -62,9 +62,7 @@ export type JsToRustMessage =
     | { type: "setStyleProperty"; id: string; property: string; value: string }
     | { type: "resizeWindow"; width: number; height: number }
     | { type: "closeWindow" }
-    | { type: "log"; level: string; message: string }
     | { type: "exitApp" }
-    | { type: "ready" }
     | { type: "setImageData"; id: string; data: Uint8Array };
 
 type RustToJsMessage =
@@ -78,8 +76,6 @@ export type Bridge = {
 
 type AppJsGlobal = typeof globalThis & {
     __APPJS_BRIDGE__?: Bridge;
-    __APPJS_SOCKET__?: net.Socket;
-    __APPJS_CONSOLE_PATCHED__?: boolean;
 };
 
 function writeFrame(socket: net.Socket, message: JsToRustMessage): void {
@@ -115,49 +111,6 @@ function mapUiEvent(event: unknown): BridgeEvent {
     }
 
     return { type: "unknown" };
-}
-
-function formatLogArgs(args: unknown[]): string {
-    return args
-        .map((arg) => {
-            if (typeof arg === "string") return arg;
-            if (typeof arg === "number" || typeof arg === "boolean" || typeof arg === "bigint") {
-                return String(arg);
-            }
-            if (arg instanceof Error) {
-                return `${arg.name}: ${arg.message}\n${arg.stack ?? ""}`;
-            }
-            try {
-                return JSON.stringify(arg);
-            } catch {
-                return String(arg);
-            }
-        })
-        .join(" ");
-}
-
-function patchConsole(bridge: Bridge): void {
-    const globalScope = globalThis as AppJsGlobal;
-    if (globalScope.__APPJS_CONSOLE_PATCHED__) return;
-    globalScope.__APPJS_CONSOLE_PATCHED__ = true;
-
-    const send = (level: "debug" | "info" | "warn" | "error", args: unknown[]) => {
-        try {
-            if (globalScope.__APPJS_SOCKET__ && !globalScope.__APPJS_SOCKET__.destroyed) {
-                bridge.send({ type: "log", level, message: formatLogArgs(args) });
-            } else {
-                process.stderr.write(`${formatLogArgs(args)}\n`);
-            }
-        } catch {
-            process.stderr.write(`${formatLogArgs(args)}\n`);
-        }
-    };
-
-    console.log = (...args: unknown[]) => send("info", args);
-    console.info = (...args: unknown[]) => send("info", args);
-    console.debug = (...args: unknown[]) => send("debug", args);
-    console.warn = (...args: unknown[]) => send("warn", args);
-    console.error = (...args: unknown[]) => send("error", args);
 }
 
 export function initAppJsBridge(): Bridge {
@@ -251,9 +204,6 @@ export function initAppJsBridge(): Bridge {
     function tryConnect(retries = 20) {
         socket = net.createConnection(SOCKET_PATH, () => {
             isConnected = true;
-            globalScope.__APPJS_SOCKET__ = socket!;
-            patchConsole(bridge);
-            bridge.send({ type: "ready" });
 
             for (const msg of messageQueue) {
                 writeFrame(socket!, msg);

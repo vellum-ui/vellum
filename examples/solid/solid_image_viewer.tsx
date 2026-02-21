@@ -86,4 +86,4 @@ function ImageViewer() {
 }
 
 renderer.render(() => <ImageViewer />);
-appjs.log.info("Solid image viewer initialized");
+console.info("Solid image viewer initialized");

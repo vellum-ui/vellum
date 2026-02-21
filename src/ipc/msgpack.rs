@@ -62,11 +62,6 @@ pub enum JsToRustMessage {
     },
     CloseWindow,
     ExitApp,
-    Log {
-        level: String,
-        message: String,
-    },
-    Ready,
     SetImageData {
         id: String,
         #[serde(with = "serde_bytes")]

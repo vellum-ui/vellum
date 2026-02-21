@@ -6,7 +6,7 @@ use masonry::widgets::{
 use masonry_winit::app::WindowId;
 use winit::dpi::PhysicalSize;
 
-use crate::ipc::{BoxStyle, JsCommand, LogLevel, UiEventSender, WidgetKind};
+use crate::ipc::{BoxStyle, JsCommand, UiEventSender, WidgetKind};
 
 use super::creation::create_and_add_widget;
 use super::styles::{apply_box_props_to_widget, apply_flex_style, build_text_styles};
@@ -347,13 +347,6 @@ pub fn handle_js_command(
             println!("[UI] Exiting application");
             render_root.emit_signal(RenderRootSignal::Exit);
         }
-
-        JsCommand::Log { level, message } => match level {
-            LogLevel::Debug => println!("[JS:DEBUG] {}", message),
-            LogLevel::Info => println!("[JS:INFO] {}", message),
-            LogLevel::Warn => eprintln!("[JS:WARN] {}", message),
-            LogLevel::Error => eprintln!("[JS:ERROR] {}", message),
-        },
 
         JsCommand::SetImageData { id, data } => {
             if let Some(info) = widget_manager.widgets.get(&id) {

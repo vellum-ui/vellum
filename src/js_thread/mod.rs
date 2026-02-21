@@ -9,7 +9,7 @@ use std::thread;
 use crate::ipc::msgpack::{
     JsToRustMessage, RustToJsMessage, read_msgpack_frame, write_msgpack_frame,
 };
-use crate::ipc::{JsCommand, JsThreadChannels, LogLevel, WidgetData, WidgetKind};
+use crate::ipc::{JsCommand, JsThreadChannels, WidgetData, WidgetKind};
 use crate::socket::{bind_socket, get_socket_path};
 
 use self::style_parser::{extract_json_value, parse_json_bool, parse_json_f64, unquote};
@@ -44,16 +44,6 @@ fn parse_widget_kind(kind: &str) -> WidgetKind {
         "ZStack" | "zstack" | "z_stack" | "stack" => WidgetKind::ZStack,
         "Portal" | "portal" | "scroll" => WidgetKind::Portal,
         other => WidgetKind::Custom(other.to_string()),
-    }
-}
-
-fn parse_log_level(level: &str) -> LogLevel {
-    match level {
-        "debug" => LogLevel::Debug,
-        "info" => LogLevel::Info,
-        "warn" => LogLevel::Warn,
-        "error" => LogLevel::Error,
-        _ => LogLevel::Info,
     }
 }
 
@@ -116,14 +106,6 @@ fn handle_js_message(message: JsToRustMessage) -> Option<JsCommand> {
         }
         JsToRustMessage::CloseWindow => Some(JsCommand::CloseWindow),
         JsToRustMessage::ExitApp => Some(JsCommand::ExitApp),
-        JsToRustMessage::Log { level, message } => Some(JsCommand::Log {
-            level: parse_log_level(&level),
-            message,
-        }),
-        JsToRustMessage::Ready => Some(JsCommand::Log {
-            level: LogLevel::Info,
-            message: "Bun runtime bridge ready".to_string(),
-        }),
         JsToRustMessage::SetImageData { id, data } => Some(JsCommand::SetImageData { id, data }),
     }
 }
@@ -330,10 +312,7 @@ fn run_socket_server(
                     }
                     Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
                     Err(e) => {
-                        let _ = command_sender_clone.send(JsCommand::Log {
-                            level: LogLevel::Error,
-                            message: format!("Failed to decode MsgPack from socket: {e}"),
-                        });
+                        eprintln!("[JS] Failed to decode MsgPack from socket: {e}");
                         break;
                     }
                 }
@@ -343,10 +322,7 @@ fn run_socket_server(
     for event in event_receiver {
         let frame = RustToJsMessage::UiEvent { event };
         if let Err(e) = write_msgpack_frame(&mut stream, &frame) {
-            let _ = command_sender.send(JsCommand::Log {
-                level: LogLevel::Warn,
-                message: format!("Socket bridge write failed: {e}"),
-            });
+            eprintln!("[JS] Socket bridge write failed: {e}");
             break;
         }
     }
@@ -356,10 +332,7 @@ fn run_socket_server(
     let _ = read_thread.join();
     let _ = std::fs::remove_file(socket_path);
 
-    let _ = command_sender.send(JsCommand::Log {
-        level: LogLevel::Info,
-        message: "Socket connection closed".to_string(),
-    });
+    println!("[JS] Socket connection closed");
 
     // JS runtime disconnected, exit the UI thread cleanly
     let _ = command_sender.send(JsCommand::ExitApp);
