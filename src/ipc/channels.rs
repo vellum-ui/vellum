@@ -50,19 +50,19 @@ impl JsCommandSender {
 /// Contains all channel endpoints needed for IPC
 pub struct IpcChannels {
     /// Endpoints for the UI thread
-    pub ui_thread: UiThreadChannels,
-    /// Endpoints for the JS thread
-    pub js_thread: JsThreadChannels,
+    pub ui: UiChannels,
+    /// Endpoints for the IPC server thread
+    pub ipc_server: IpcServerChannels,
 }
 
 /// Channel endpoints held by the UI thread
-pub struct UiThreadChannels {
-    /// Send UI events to JS thread
+pub struct UiChannels {
+    /// Send UI events to IPC server thread
     pub event_sender: UiEventSender,
 }
 
-/// Channel endpoints held by the JS thread
-pub struct JsThreadChannels {
+/// Channel endpoints held by the IPC server thread
+pub struct IpcServerChannels {
     /// Receive UI events from UI thread
     pub event_receiver: UiEventReceiver,
     /// Send commands to UI thread (via EventLoopProxy, zero polling)
@@ -76,10 +76,10 @@ impl IpcChannels {
         let (ui_event_tx, ui_event_rx) = mpsc::channel::<UiEvent>();
 
         IpcChannels {
-            ui_thread: UiThreadChannels {
+            ui: UiChannels {
                 event_sender: ui_event_tx,
             },
-            js_thread: JsThreadChannels {
+            ipc_server: IpcServerChannels {
                 event_receiver: ui_event_rx,
                 command_sender: JsCommandSender::new(proxy, window_id),
             },

@@ -5,9 +5,9 @@ use masonry::properties::ObjectFit;
 use masonry::widgets::Image;
 
 use crate::ipc::{BoxStyle, WidgetData, WidgetKind};
-use crate::ui_thread::styles::build_box_properties;
-use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
-use crate::ui_thread::widgets::utils::add_to_parent;
+use crate::ui::styles::build_box_properties;
+use crate::ui::widget_manager::{WidgetInfo, WidgetManager};
+use crate::ui::widgets::utils::add_to_parent;
 
 /// Decode raw file bytes (PNG/JPEG/WebP/etc.) into masonry ImageData
 fn decode_image_bytes(data: &[u8]) -> Option<ImageData> {

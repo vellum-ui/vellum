@@ -288,7 +288,7 @@ pub fn handle_js_command(
             } else {
                 format!("\"{}\"", value)
             };
-            crate::js_thread::style_parser::apply_style_property(
+            crate::ui::style_parser::apply_style_property(
                 &mut style,
                 &property,
                 &quoted_value,

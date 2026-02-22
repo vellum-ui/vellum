@@ -1,7 +1,7 @@
 // JS Thread Module
 // Handles JavaScript execution via an external Bun process.
 
-pub mod style_parser;
+// removed pub mod style_parser;
 
 use std::io::ErrorKind;
 use std::sync::mpsc::{self, RecvTimeoutError};
@@ -11,16 +11,16 @@ use std::time::Duration;
 use crate::ipc::msgpack::{
     JsToRustMessage, RustToJsMessage, read_msgpack_frame, write_msgpack_frame,
 };
-use crate::ipc::{JsCommand, JsThreadChannels, UiEvent, WidgetData, WidgetKind};
+use crate::ipc::{JsCommand, IpcServerChannels, UiEvent, WidgetData, WidgetKind};
 use crate::socket::{bind_socket, get_socket_path};
 
-use self::style_parser::{extract_json_value, parse_json_bool, parse_json_f64, unquote};
+use crate::ui::style_parser::{self, extract_json_value, parse_json_bool, parse_json_f64, unquote};
 
 /// Run the JS runtime bridge on a background thread.
 ///
 /// This binds a Unix Domain Socket and communicates via
 /// length-prefixed MsgPack frames.
-pub fn run_js_thread(channels: JsThreadChannels) {
+pub fn run_ipc_server(channels: IpcServerChannels) {
     if let Err(e) = run_socket_server(channels) {
         eprintln!("[JS] Runtime socket error: {e}");
     }
@@ -321,7 +321,7 @@ fn build_widget_data(
 }
 
 fn run_socket_server(
-    channels: JsThreadChannels,
+    channels: IpcServerChannels,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let command_sender = channels.command_sender;
     let event_receiver = channels.event_receiver;

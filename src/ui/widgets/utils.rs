@@ -3,7 +3,7 @@ use masonry::core::NewWidget;
 use masonry::widgets::{ChildAlignment, Flex, SizedBox, ZStack};
 
 use crate::ipc::WidgetKind;
-use crate::ui_thread::widget_manager::{ROOT_FLEX_TAG, WidgetManager};
+use crate::ui::widget_manager::{ROOT_FLEX_TAG, WidgetManager};
 
 use super::hoverable::Hoverable;
 

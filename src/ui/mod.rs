@@ -5,6 +5,7 @@ pub mod creation;
 pub mod driver;
 pub mod handler;
 pub mod layout;
+pub mod style_parser;
 pub mod styles;
 pub mod widget_manager;
 pub mod widgets;

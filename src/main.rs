@@ -11,15 +11,14 @@
 // #![windows_subsystem = "windows"]
 
 mod ipc;
-mod js_thread;
 mod socket;
-mod ui_thread;
+mod ui;
 
 use std::thread;
 
 use ipc::IpcChannels;
-use js_thread::run_js_thread;
-use ui_thread::{prepare_ui, run_ui_blocking};
+use ipc::server::run_ipc_server;
+use ui::{prepare_ui, run_ui_blocking};
 
 fn main() {
     println!("AppJS Starting...");
@@ -55,28 +54,28 @@ fn main() {
     // UI→JS events use mpsc channels.
     let channels = IpcChannels::new(ui_setup.proxy, ui_setup.window_id);
 
-    let ui_channels = channels.ui_thread;
-    let js_channels = channels.js_thread;
+    let ui_channels = channels.ui;
+    let js_channels = channels.ipc_server;
 
-    // Phase 3: Spawn the JS runtime thread with EventLoopProxy-based command sender.
-    let js_thread_handle = thread::Builder::new()
-        .name("js-runtime".to_string())
+    // Phase 3: Spawn the IPC server thread with EventLoopProxy-based command sender.
+    let ipc_server_handle = thread::Builder::new()
+        .name("ipc-server".to_string())
         .spawn(move || {
-            println!("[Main] JS thread started");
-            run_js_thread(js_channels);
-            println!("[Main] JS thread finished");
+            println!("[Main] IPC server thread started");
+            run_ipc_server(js_channels);
+            println!("[Main] IPC server thread finished");
         })
-        .unwrap_or_else(|e| panic!("Fatal: failed to spawn JS runtime thread: {e}"));
+        .unwrap_or_else(|e| panic!("Fatal: failed to spawn IPC server thread: {e}"));
 
     // Phase 4: Run the UI event loop on the main thread (blocks forever).
     // The main thread MUST run the UI due to platform requirements (macOS, etc.).
     println!("[Main] Starting UI on main thread");
     run_ui_blocking(event_loop, ui_setup.window_id, ui_channels.event_sender);
 
-    // Wait for the JS thread to finish after the UI closes
-    println!("[Main] UI closed, waiting for JS thread to finish...");
-    if let Err(e) = js_thread_handle.join() {
-        eprintln!("[Main] JS thread panicked: {:?}", e);
+    // Wait for the IPC server thread to finish after the UI closes
+    println!("[Main] UI closed, waiting for IPC server thread to finish...");
+    if let Err(e) = ipc_server_handle.join() {
+        eprintln!("[Main] IPC server thread panicked: {:?}", e);
     }
 
     println!("[Main] AppJS shutdown complete");

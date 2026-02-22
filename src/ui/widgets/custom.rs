@@ -6,9 +6,9 @@ use masonry::properties::ContentColor;
 use masonry::widgets::Label;
 
 use crate::ipc::{BoxStyle, WidgetKind};
-use crate::ui_thread::styles::{build_box_properties, build_text_styles};
-use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
-use crate::ui_thread::widgets::utils::add_to_parent;
+use crate::ui::styles::{build_box_properties, build_text_styles};
+use crate::ui::widget_manager::{WidgetInfo, WidgetManager};
+use crate::ui::widgets::utils::add_to_parent;
 
 pub fn create(
     render_root: &mut RenderRoot,

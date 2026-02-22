@@ -2,10 +2,10 @@ use masonry::app::RenderRoot;
 use masonry::core::{NewWidget, Properties, WidgetId, WidgetOptions};
 
 use crate::ipc::{BoxStyle, WidgetData, WidgetKind};
-use crate::ui_thread::styles::build_box_properties;
-use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
-use crate::ui_thread::widgets::svg_widget_impl::SvgWidget;
-use crate::ui_thread::widgets::utils::add_to_parent;
+use crate::ui::styles::build_box_properties;
+use crate::ui::widget_manager::{WidgetInfo, WidgetManager};
+use crate::ui::widgets::svg_widget_impl::SvgWidget;
+use crate::ui::widgets::utils::add_to_parent;
 
 pub fn create(
     render_root: &mut RenderRoot,

@@ -1,11 +1,11 @@
 use masonry::app::RenderRoot;
 use masonry::core::{NewWidget, Properties, WidgetId, WidgetOptions};
-use masonry::widgets::{Flex, Portal};
+use masonry::widgets::Flex;
 
 use crate::ipc::{BoxStyle, WidgetKind};
-use crate::ui_thread::styles::build_box_properties;
-use crate::ui_thread::widget_manager::{WidgetInfo, WidgetManager};
-use crate::ui_thread::widgets::utils::add_to_parent;
+use crate::ui::styles::build_box_properties;
+use crate::ui::widget_manager::{WidgetInfo, WidgetManager};
+use crate::ui::widgets::utils::add_to_parent;
 
 pub fn create(
     render_root: &mut RenderRoot,
@@ -17,13 +17,13 @@ pub fn create(
     widget_id: WidgetId,
 ) {
     let style_ref = style.as_ref();
-    let inner_flex = Flex::column();
-    let portal = Portal::new(NewWidget::new(inner_flex));
+    // Grid is not natively supported yet, fallback to Flex column
+    let flex = Flex::column();
 
     let props = style_ref
         .map(build_box_properties)
         .unwrap_or_else(Properties::new);
-    let new_widget = NewWidget::new_with(portal, widget_id, WidgetOptions::default(), props);
+    let new_widget = NewWidget::new_with(flex, widget_id, WidgetOptions::default(), props);
 
     if add_to_parent(
         render_root,
@@ -37,7 +37,7 @@ pub fn create(
             id,
             WidgetInfo {
                 widget_id,
-                kind: WidgetKind::Portal,
+                kind: WidgetKind::Grid,
                 parent_id: parent_id.clone(),
                 child_index,
             },

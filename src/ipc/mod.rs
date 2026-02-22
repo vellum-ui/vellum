@@ -6,6 +6,7 @@ pub mod color;
 pub mod commands;
 pub mod events;
 pub mod msgpack;
+pub mod server;
 
 pub use channels::*;
 pub use color::ColorValue;
