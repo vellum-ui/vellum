@@ -1,7 +1,7 @@
 // Image Viewer — Solid TSX version
 // Fetches random images from picsum.photos
-import * as appjs from "@appjs/runtime";
-import { createAppJsRenderer, createSignal } from "@appjs/solid-renderer";
+import * as Vellum from "@vellum/core";
+import { createVellumRenderer, createSignal } from "@vellum/solid";
 
 const WIDTH = 400;
 const HEIGHT = 300;
@@ -12,11 +12,11 @@ async function fetchImageBytes(): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-appjs.window.setTitle("Image Viewer");
-appjs.window.resize(500, 500);
-appjs.body.setStyle({ background: "#1e1e2e", padding: 24 });
+Vellum.window.setTitle("Image Viewer");
+Vellum.window.resize(500, 500);
+Vellum.body.setStyle({ background: "#1e1e2e", padding: 24 });
 
-const renderer = createAppJsRenderer(appjs);
+const renderer = createVellumRenderer(Vellum);
 
 function ImageViewer() {
   const [status, setStatus] = createSignal("Idle");

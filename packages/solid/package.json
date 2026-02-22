@@ -1,22 +1,21 @@
 {
-    "name": "@appjs/runtime",
+    "name": "@vellum/solid",
     "version": "0.1.0",
     "type": "module",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./jsx-runtime": "./src/jsx-runtime.ts",
+        "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
     },
     "main": "src/index.ts",
     "types": "src/index.ts",
     "files": [
         "src"
     ],
-    "dependencies": {
-        "@msgpack/msgpack": "^3.1.2"
-    },
     "publishConfig": {
         "access": "public"
     },
-    "devDependencies": {
-        "@types/node": "^25.3.0"
+    "dependencies": {
+        "solid-js": "^1.9.0"
     }
 }

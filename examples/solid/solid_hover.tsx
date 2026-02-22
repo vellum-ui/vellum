@@ -1,14 +1,14 @@
-import * as appjs from "@appjs/runtime";
-import { createAppJsRenderer, createSignal } from "@appjs/solid-renderer";
+import * as Vellum from "@vellum/core";
+import { createVellumRenderer, createSignal } from "@vellum/solid";
 
-appjs.window.setTitle("AppJS Hover Test");
-appjs.window.resize(760, 520);
-appjs.body.setStyle({
+Vellum.window.setTitle("Vellum Hover Test");
+Vellum.window.resize(760, 520);
+Vellum.body.setStyle({
   background: "#111827",
   padding: 24,
 });
 
-const renderer = createAppJsRenderer(appjs);
+const renderer = createVellumRenderer(Vellum);
 
 function HoverExample() {
   const [buttonHovered, setButtonHovered] = createSignal(false);

@@ -43,7 +43,7 @@ export interface BoxStyle {
     [key: string]: unknown;
 }
 
-export type AppJsStyle = BoxStyle;
+export type VellumStyle = BoxStyle;
 
 export interface ButtonParams {
     svgData?: string;
@@ -76,7 +76,7 @@ export interface SliderParams {
     step?: number;
 }
 
-export interface AppJsEvent {
+export interface VellumEvent {
     type: string;
     widgetId?: string;
     action?: string;

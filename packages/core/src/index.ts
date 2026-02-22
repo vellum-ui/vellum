@@ -1,6 +1,6 @@
 import type {
-    AppJsEvent,
-    AppJsStyle,
+    VellumEvent,
+    VellumStyle,
     BoxStyle,
     ButtonParams,
     CheckboxParams,
@@ -40,7 +40,7 @@ export const window = {
 };
 
 export const body = {
-    setStyle: (style: AppJsStyle): void => setWidgetStyle("__root__", style),
+    setStyle: (style: VellumStyle): void => setWidgetStyle("__root__", style),
     setStyleProperty: (property: string, value: string | number): void =>
         setStyleProperty("__root__", property, String(value)),
 };
@@ -71,44 +71,44 @@ export const ui = {
 export { events };
 export type * from "./widgets/types.ts";
 
-export function label(id: string, parentId: string | null, text: string, style?: AppJsStyle): string {
+export function label(id: string, parentId: string | null, text: string, style?: VellumStyle): string {
     ui.createWidget(id, "label", parentId, text, style ?? null);
     return id;
 }
 
-export function button(id: string, parentId: string | null, text: string, style?: AppJsStyle): string {
+export function button(id: string, parentId: string | null, text: string, style?: VellumStyle): string {
     ui.createWidget(id, "button", parentId, text, style ?? null);
     return id;
 }
 
-export function iconButton(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
+export function iconButton(id: string, parentId: string | null, svgData: string, style?: VellumStyle): string {
     const params: ButtonParams = { svgData };
     ui.createWidget(id, "iconButton", parentId, null, style ?? null, params);
     return id;
 }
 
-export function svg(id: string, parentId: string | null, svgData: string, style?: AppJsStyle): string {
+export function svg(id: string, parentId: string | null, svgData: string, style?: VellumStyle): string {
     const params: SvgParams = { svgData };
     ui.createWidget(id, "svg", parentId, null, style ?? null, params);
     return id;
 }
 
-export function flex(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function flex(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "flex", parentId, null, style ?? null);
     return id;
 }
 
-export function row(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function row(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "flex", parentId, null, { ...style, direction: "row" });
     return id;
 }
 
-export function column(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function column(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "flex", parentId, null, { ...style, direction: "column" });
     return id;
 }
 
-export function box(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function box(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "sizedBox", parentId, null, style ?? null);
     return id;
 }
@@ -118,7 +118,7 @@ export function checkbox(
     parentId: string | null,
     checked: boolean,
     text: string,
-    style?: AppJsStyle
+    style?: VellumStyle
 ): string {
     const params: CheckboxParams = { checked: !!checked };
     ui.createWidget(id, "checkbox", parentId, text, style ?? null, params);
@@ -129,14 +129,14 @@ export function textInput(
     id: string,
     parentId: string | null,
     placeholder?: string,
-    style?: AppJsStyle
+    style?: VellumStyle
 ): string {
     const params: TextInputParams | null = placeholder ? { placeholder } : null;
     ui.createWidget(id, "textInput", parentId, null, style ?? null, params);
     return id;
 }
 
-export function prose(id: string, parentId: string | null, text?: string, style?: AppJsStyle): string {
+export function prose(id: string, parentId: string | null, text?: string, style?: VellumStyle): string {
     ui.createWidget(id, "prose", parentId, text ?? null, style ?? null);
     return id;
 }
@@ -145,14 +145,14 @@ export function progressBar(
     id: string,
     parentId: string | null,
     progress?: number,
-    style?: AppJsStyle
+    style?: VellumStyle
 ): string {
     const params: ProgressBarParams = { progress: progress ?? 0 };
     ui.createWidget(id, "progressBar", parentId, null, style ?? null, params);
     return id;
 }
 
-export function spinner(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function spinner(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "spinner", parentId, null, style ?? null);
     return id;
 }
@@ -163,7 +163,7 @@ export function slider(
     min: number,
     max: number,
     value: number,
-    style?: AppJsStyle,
+    style?: VellumStyle,
     step?: number,
 ): string {
     const params: SliderParams = {
@@ -176,24 +176,24 @@ export function slider(
     return id;
 }
 
-export function zstack(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function zstack(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "zstack", parentId, null, style ?? null);
     return id;
 }
 
-export function portal(id: string, parentId: string | null, style?: AppJsStyle): string {
+export function portal(id: string, parentId: string | null, style?: VellumStyle): string {
     ui.createWidget(id, "portal", parentId, null, style ?? null);
     return id;
 }
 
 export { exit };
-export type { AppJsStyle, AppJsEvent, BoxStyle };
+export type { VellumStyle, VellumEvent, BoxStyle };
 
 export function image(
     id: string,
     parentId: string | null,
     data: Uint8Array,
-    style?: AppJsStyle & { objectFit?: string }
+    style?: VellumStyle & { objectFit?: string }
 ): string {
     const objectFit = style?.objectFit;
     const { objectFit: _of, ...restStyle } = style ?? {};

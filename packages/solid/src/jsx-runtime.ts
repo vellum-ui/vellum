@@ -1,6 +1,6 @@
 import { createComponent, getOwner } from "solid-js/dist/solid.js";
 import type { Component, JSX as SolidJSX } from "solid-js";
-import type { AppJsCommonProps, AppJsIntrinsicElements, AppJsJsxNode } from "./types";
+import type { VellumCommonProps, VellumIntrinsicElements, VellumJsxNode } from "./types";
 
 type JsxProps = Record<string, unknown> | null | undefined;
 
@@ -18,9 +18,9 @@ function withChildren(props: JsxProps, children: unknown[]): Record<string, unkn
     return merged;
 }
 
-function createJsxNode(type: string, props: Record<string, unknown>): AppJsJsxNode {
+function createJsxNode(type: string, props: Record<string, unknown>): VellumJsxNode {
     return {
-        __appjsJsx: true,
+        __VellumJsx: true,
         type,
         props,
         owner: getOwner(),
@@ -45,5 +45,5 @@ export const jsxs = jsx;
 export const jsxDEV = jsx;
 
 export namespace JSX {
-    export interface IntrinsicElements extends AppJsIntrinsicElements { }
+    export interface IntrinsicElements extends VellumIntrinsicElements { }
 }

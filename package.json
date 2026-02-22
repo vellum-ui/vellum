@@ -1,5 +1,5 @@
 {
-  "name": "appjs-monorepo",
+  "name": "@vellum/monorepo",
   "private": true,
   "packageManager": "bun@1.2.22",
   "workspaces": [

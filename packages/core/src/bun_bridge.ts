@@ -8,15 +8,15 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { decode, encode } from "@msgpack/msgpack";
 
 const SOCKET_PATH = process.platform === "win32"
-    ? `${os.tmpdir()}\\appjs_${crypto.randomUUID()}.sock`
-    : `/tmp/appjs_${crypto.randomUUID()}.sock`;
+    ? `${os.tmpdir()}\\Vellum_${crypto.randomUUID()}.sock`
+    : `/tmp/Vellum_${crypto.randomUUID()}.sock`;
 
-function findAppJsBinary(): string {
+function findVellumBinary(): string {
     const isWin = process.platform === "win32";
-    const exeName = isWin ? "appjs.exe" : "appjs";
+    const exeName = isWin ? "vellum.exe" : "vellum";
 
-    if (process.env.APPJS_BIN) {
-        return process.env.APPJS_BIN;
+    if (process.env.VELLUM_BIN) {
+        return process.env.VELLUM_BIN;
     }
 
     const searchPaths = [
@@ -78,8 +78,8 @@ export type Bridge = {
     onEvent(callback: (event: BridgeEvent) => void): () => void;
 };
 
-type AppJsGlobal = typeof globalThis & {
-    __APPJS_BRIDGE__?: Bridge;
+type VellumGlobal = typeof globalThis & {
+    __Vellum_BRIDGE__?: Bridge;
 };
 
 function writeFrame(socket: net.Socket, message: JsToRustMessage): void {
@@ -127,10 +127,10 @@ function mapUiEvent(event: unknown): BridgeEvent {
     return { type: "unknown" };
 }
 
-export function initAppJsBridge(): Bridge {
-    const globalScope = globalThis as AppJsGlobal;
-    if (globalScope.__APPJS_BRIDGE__) {
-        return globalScope.__APPJS_BRIDGE__;
+export function initVellumBridge(): Bridge {
+    const globalScope = globalThis as VellumGlobal;
+    if (globalScope.__Vellum_BRIDGE__) {
+        return globalScope.__Vellum_BRIDGE__;
     }
 
     const listeners = new Set<(event: BridgeEvent) => void>();
@@ -155,25 +155,25 @@ export function initAppJsBridge(): Bridge {
         },
     };
 
-    globalScope.__APPJS_BRIDGE__ = bridge;
+    globalScope.__Vellum_BRIDGE__ = bridge;
 
-    const binPath = findAppJsBinary();
-    const appjsProcess = spawn(binPath, [], {
-        env: { ...process.env, APPJS_SOCKET: SOCKET_PATH },
+    const binPath = findVellumBinary();
+    const VellumProcess = spawn(binPath, [], {
+        env: { ...process.env, VELLUM_SOCKET: SOCKET_PATH },
         stdio: "inherit",
     });
 
-    appjsProcess.on("error", (err) => {
-        process.stderr.write(`[appjs bridge] Failed to start appjs binary: ${String(err)}\n`);
+    VellumProcess.on("error", (err) => {
+        process.stderr.write(`[Vellum bridge] Failed to start Vellum binary: ${String(err)}\n`);
         process.exit(1);
     });
 
-    appjsProcess.on("exit", (code) => {
+    VellumProcess.on("exit", (code) => {
         process.exit(code ?? 0);
     });
 
     process.on("exit", () => {
-        appjsProcess.kill();
+        VellumProcess.kill();
     });
 
     const emitEvent = (event: BridgeEvent) => {
@@ -181,7 +181,7 @@ export function initAppJsBridge(): Bridge {
             try {
                 listener(event);
             } catch (err) {
-                process.stderr.write(`[appjs bridge] Event listener error: ${String(err)}\n`);
+                process.stderr.write(`[Vellum bridge] Event listener error: ${String(err)}\n`);
             }
         }
     };
@@ -201,7 +201,7 @@ export function initAppJsBridge(): Bridge {
                     fatal: message.fatal,
                 });
                 process.stderr.write(
-                    `[appjs bridge] Rust runtime error (${message.source}, fatal=${String(message.fatal)}): ${message.message}\n`,
+                    `[Vellum bridge] Rust runtime error (${message.source}, fatal=${String(message.fatal)}): ${message.message}\n`,
                 );
                 return;
             }
@@ -210,7 +210,7 @@ export function initAppJsBridge(): Bridge {
                 process.exit(0);
             }
         } catch (err) {
-            process.stderr.write(`[appjs bridge] Decode error: ${String(err)}\n`);
+            process.stderr.write(`[Vellum bridge] Decode error: ${String(err)}\n`);
         }
     };
 
@@ -246,7 +246,7 @@ export function initAppJsBridge(): Bridge {
             });
 
             socket!.on("error", (err) => {
-                process.stderr.write(`[appjs bridge] Socket connection error: ${String(err)}\n`);
+                process.stderr.write(`[Vellum bridge] Socket connection error: ${String(err)}\n`);
                 process.exit(1);
             });
         });
@@ -256,7 +256,7 @@ export function initAppJsBridge(): Bridge {
                 if (retries > 0) {
                     setTimeout(() => tryConnect(retries - 1), 50);
                 } else {
-                    process.stderr.write(`[appjs bridge] Socket connection failed after retries: ${String(err)}\n`);
+                    process.stderr.write(`[Vellum bridge] Socket connection failed after retries: ${String(err)}\n`);
                     process.exit(1);
                 }
             }
@@ -269,7 +269,7 @@ export function initAppJsBridge(): Bridge {
 }
 
 export function ensureBridge(): Bridge {
-    return initAppJsBridge();
+    return initVellumBridge();
 }
 
-initAppJsBridge();
+initVellumBridge();

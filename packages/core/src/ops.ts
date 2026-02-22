@@ -1,4 +1,4 @@
-import type { AppJsStyle } from "./types.ts";
+import type { VellumStyle } from "./types.ts";
 import { ensureBridge, type BridgeEvent, type Bridge, type JsToRustMessage } from "./bun_bridge.ts";
 
 const bridge: Bridge = ensureBridge();
@@ -26,7 +26,7 @@ export function createWidget(
     kind: string,
     parentId: string | null,
     text: string | null,
-    style: AppJsStyle | null,
+    style: VellumStyle | null,
     params?: object | null,
     data?: Uint8Array | null
 ): void {
@@ -62,7 +62,7 @@ export function setWidgetChecked(id: string, checked: boolean): void {
     bridge.send({ type: "setWidgetChecked", id, checked });
 }
 
-export function setWidgetStyle(id: string, style: AppJsStyle): void {
+export function setWidgetStyle(id: string, style: VellumStyle): void {
     bridge.send({ type: "setWidgetStyle", id, style_json: JSON.stringify(style) });
 }
 

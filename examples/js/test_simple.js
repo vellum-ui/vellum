@@ -1,7 +1,7 @@
 // Minimal test: just create a label with text
-import * as appjs from "@appjs/runtime";
+import * as Vellum UI from "@vellum/core";
 
-appjs.window.setTitle("Simple Test");
-appjs.ui.createWidget("lbl", "Label");
-appjs.ui.setWidgetText("lbl", "Hello World - This should be visible!");
+Vellum UI.window.setTitle("Simple Test");
+Vellum UI.ui.createWidget("lbl", "Label");
+Vellum UI.ui.setWidgetText("lbl", "Hello World - This should be visible!");
 console.log("Done - label created with text");

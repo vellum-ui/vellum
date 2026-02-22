@@ -1,13 +1,13 @@
 import { onBridgeEvent } from "./ops.ts";
-import type { AppJsEvent } from "./types.ts";
+import type { VellumEvent } from "./types.ts";
 
-type EventHandler = (event: AppJsEvent) => void;
+type EventHandler = (event: VellumEvent) => void;
 
 const listeners: Record<string, EventHandler[]> = {};
 let eventLoopRunning = false;
 let unsubscribeBridge: (() => void) | null = null;
 
-function dispatch(event: AppJsEvent): void {
+function dispatch(event: VellumEvent): void {
     const type = event.type;
     if (!type) return;
 
@@ -17,7 +17,7 @@ function dispatch(event: AppJsEvent): void {
             try {
                 handler(event);
             } catch (err) {
-                console.error(`[appjs] Error in '${type}' handler:`, err);
+                console.error(`[Vellum] Error in '${type}' handler:`, err);
             }
         }
     }
@@ -28,7 +28,7 @@ function dispatch(event: AppJsEvent): void {
             try {
                 handler(event);
             } catch (err) {
-                console.error("[appjs] Error in wildcard handler:", err);
+                console.error("[Vellum] Error in wildcard handler:", err);
             }
         }
     }

@@ -222,22 +222,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a38750a2a9617d9f1a1428b408fb909f7256a2766c59b0b07993170959731bb"
 
 [[package]]
-name = "appjs"
-version = "0.1.0"
-dependencies = [
- "image",
- "masonry",
- "masonry_winit",
- "rmp-serde",
- "serde",
- "serde_bytes",
- "serde_json",
- "uds_windows",
- "vello_svg",
- "winit",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3867,6 +3851,22 @@ dependencies = [
  "thiserror 2.0.18",
  "usvg",
  "vello",
+]
+
+[[package]]
+name = "vellum"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "masonry",
+ "masonry_winit",
+ "rmp-serde",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "uds_windows",
+ "vello_svg",
+ "winit",
 ]
 
 [[package]]

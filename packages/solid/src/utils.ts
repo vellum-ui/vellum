@@ -1,5 +1,5 @@
 
-import { AppJsStyle, AppJsJsxNode, HostNode, HostParent } from "./types";
+import { VellumStyle, VellumJsxNode, HostNode, HostParent } from "./types";
 
 export function isEventProp(name: string): boolean {
   return /^on[A-Z]/.test(name);
@@ -127,16 +127,16 @@ export function linkIntoParent(parent: HostParent, node: HostNode, anchor: HostN
   current.nextSibling = node;
 }
 
-export function createEmptyStyle(): AppJsStyle {
-  return Object.create(null) as AppJsStyle;
+export function createEmptyStyle(): VellumStyle {
+  return Object.create(null) as VellumStyle;
 }
 
-export function isAppJsJsxNode(value: unknown): value is AppJsJsxNode {
+export function isVellumJsxNode(value: unknown): value is VellumJsxNode {
   return (
     typeof value === "object" &&
     value !== null &&
-    "__appjsJsx" in value &&
-    (value as { __appjsJsx?: unknown }).__appjsJsx === true &&
+    "__VellumJsx" in value &&
+    (value as { __VellumJsx?: unknown }).__VellumJsx === true &&
     typeof (value as { type?: unknown }).type === "string"
   );
 }

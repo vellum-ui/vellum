@@ -1,30 +1,30 @@
 // Counter App Example
-import * as appjs from "@appjs/runtime";
+import * as Vellum UI from "@vellum/core";
 
 // Set window title
-appjs.window.setTitle("Counter App");
+Vellum UI.window.setTitle("Counter App");
 
 // Create a root column that fills the window
-appjs.column("root", null, {
+Vellum UI.column("root", null, {
     gap: 12,
     padding: 20,
     crossAxisAlignment: "center",
 });
 
-appjs.label("header", "root", "Simple Counter App", { fontSize: 24, fontWeight: 700 });
-appjs.label("countLabel", "root", "Count: 0", { fontSize: 36, fontWeight: 900 });
+Vellum UI.label("header", "root", "Simple Counter App", { fontSize: 24, fontWeight: 700 });
+Vellum UI.label("countLabel", "root", "Count: 0", { fontSize: 36, fontWeight: 900 });
 
-appjs.row("btnRow", "root", { gap: 10 });
-appjs.button("incBtn", "btnRow", "Increment");
-appjs.button("decBtn", "btnRow", "Decrement");
+Vellum UI.row("btnRow", "root", { gap: 10 });
+Vellum UI.button("incBtn", "btnRow", "Increment");
+Vellum UI.button("decBtn", "btnRow", "Decrement");
 
 let count = 0;
 
 function updateCount() {
-    appjs.ui.setWidgetText("countLabel", `Count: ${count}`);
+    Vellum UI.ui.setWidgetText("countLabel", `Count: ${count}`);
 }
 
-appjs.events.on("widgetAction", (e) => {
+Vellum UI.events.on("widgetAction", (e) => {
     // Log the event for debugging
     console.info(`Action on ${e.widgetId}: ${e.action}`);
 

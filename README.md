@@ -1,4 +1,4 @@
-# appjs
+# Vellum UI
 
 > **A JavaScript/TypeScript runtime for building native desktop applications.**
 >
@@ -10,16 +10,16 @@
 > feedback, and ideas are very welcome.
 
 > [!NOTE]
-> **The name `appjs` is a placeholder** and we're open to suggestions for a
+> **The name `Vellum UI` is a placeholder** and we're open to suggestions for a
 > better name. If you have ideas, feel free to open an issue!
 
 ---
 
-## What is appjs?
+## What is Vellum UI?
 
-appjs is a lightweight desktop application runtime that lets you build native,
+Vellum UI is a lightweight desktop application runtime that lets you build native,
 GPU-rendered UIs using JavaScript or TypeScript. Instead of bundling a full web
-browser (like Electron), appjs pairs a Bun process with a native widget toolkit
+browser (like Electron), Vellum UI pairs a Bun process with a native widget toolkit
 ([Masonry](https://github.com/linebender/xilem)), giving you:
 
 - **Small binary size** -- no bundled Chromium
@@ -41,8 +41,8 @@ Think of it as: _what if Bun and a native UI toolkit had a baby?_
 
 ```bash
 # Clone the repo
-git clone https://github.com/user/appjs.git
-cd appjs
+git clone https://github.com/user/Vellum UI.git
+cd Vellum UI
 
 # Build
 cargo build
@@ -55,27 +55,27 @@ bun run examples/js/test_ui.js
 
 ```javascript
 // hello.js
-import appjs from "@appjs/runtime";
+import Vellum UI from "@vellum/core";
 
-appjs.window.setTitle("Hello World");
+Vellum UI.window.setTitle("Hello World");
 
-appjs.body.setStyle({
+Vellum UI.body.setStyle({
     background: "#1e1e2e",
     padding: 24,
     gap: 16,
 });
 
-appjs.label("greeting", null, "Hello from appjs!", {
+Vellum UI.label("greeting", null, "Hello from Vellum UI!", {
     fontSize: 24,
     fontWeight: "bold",
     color: "#cdd6f4",
 });
 
-appjs.button("btn", null, "Click me!");
+Vellum UI.button("btn", null, "Click me!");
 
-appjs.events.on("widgetAction", (e) => {
+Vellum UI.events.on("widgetAction", (e) => {
     if (e.widgetId === "btn" && e.action === "click") {
-        appjs.ui.setText("greeting", "You clicked the button!");
+        Vellum UI.ui.setText("greeting", "You clicked the button!");
     }
 });
 ```
@@ -86,7 +86,7 @@ bun run hello.js
 
 ## Architecture
 
-appjs uses a strict **dual-threaded architecture** to keep the UI responsive at
+Vellum UI uses a strict **dual-threaded architecture** to keep the UI responsive at
 all times:
 
 ```
@@ -142,9 +142,9 @@ strings cross the thread boundary.
 ### Window
 
 ```javascript
-appjs.window.setTitle("My App");
-appjs.window.resize(1024, 768);
-appjs.window.close();
+Vellum UI.window.setTitle("My App");
+Vellum UI.window.resize(1024, 768);
+Vellum UI.window.close();
 ```
 
 ### Body (Root Container)
@@ -152,7 +152,7 @@ appjs.window.close();
 Style the root container like you would `<body>` in HTML:
 
 ```javascript
-appjs.body.setStyle({
+Vellum UI.body.setStyle({
     background: "#1e1e2e",
     padding: 24,
     gap: 16,
@@ -162,30 +162,30 @@ appjs.body.setStyle({
 
 ### Widgets
 
-All widgets follow the pattern: `appjs.widget(id, parentId, ...args, style?)`.
+All widgets follow the pattern: `Vellum UI.widget(id, parentId, ...args, style?)`.
 
 ```javascript
 // Text
-appjs.label("id", parentId, "text", { fontSize: 16, color: "#fff" });
-appjs.prose("id", parentId, "selectable text");
+Vellum UI.label("id", parentId, "text", { fontSize: 16, color: "#fff" });
+Vellum UI.prose("id", parentId, "selectable text");
 
 // Controls
-appjs.button("id", parentId, "Click me");
-appjs.checkbox("id", parentId, false, "Enable feature");
-appjs.slider("id", parentId, 0, 100, 50);
-appjs.textInput("id", parentId, "placeholder...");
+Vellum UI.button("id", parentId, "Click me");
+Vellum UI.checkbox("id", parentId, false, "Enable feature");
+Vellum UI.slider("id", parentId, 0, 100, 50);
+Vellum UI.textInput("id", parentId, "placeholder...");
 
 // Layout
-appjs.row("id", parentId, { gap: 8 });
-appjs.column("id", parentId, { gap: 8, crossAxisAlignment: "fill" });
-appjs.flex("id", parentId, { direction: "row", gap: 12 });
-appjs.box("id", parentId, { width: 100, height: 100 });
-appjs.zstack("id", parentId);
-appjs.portal("id", parentId); // scrollable container
+Vellum UI.row("id", parentId, { gap: 8 });
+Vellum UI.column("id", parentId, { gap: 8, crossAxisAlignment: "fill" });
+Vellum UI.flex("id", parentId, { direction: "row", gap: 12 });
+Vellum UI.box("id", parentId, { width: 100, height: 100 });
+Vellum UI.zstack("id", parentId);
+Vellum UI.portal("id", parentId); // scrollable container
 
 // Feedback
-appjs.progressBar("id", parentId, 0.5);
-appjs.spinner("id", parentId);
+Vellum UI.progressBar("id", parentId, 0.5);
+Vellum UI.spinner("id", parentId);
 ```
 
 ### Styling
@@ -232,20 +232,20 @@ Every widget accepts a style object with CSS-like properties:
 Update styles at runtime:
 
 ```javascript
-appjs.ui.setStyle("myWidget", { color: "#a6e3a1", fontSize: 20 });
-appjs.ui.setStyleProperty("myWidget", "color", "#f38ba8");
+Vellum UI.ui.setStyle("myWidget", { color: "#a6e3a1", fontSize: 20 });
+Vellum UI.ui.setStyleProperty("myWidget", "color", "#f38ba8");
 ```
 
 ### Events
 
 ```javascript
-appjs.events.on("widgetAction", (e) => {
+Vellum UI.events.on("widgetAction", (e) => {
     // e.widgetId  -- which widget
     // e.action    -- "click", "valueChanged", "textChanged"
     // e.value     -- associated value (number, string)
 });
 
-appjs.events.on("windowResized", (e) => {
+Vellum UI.events.on("windowResized", (e) => {
     console.log(e.width, e.height);
 });
 
@@ -255,11 +255,11 @@ appjs.events.on("windowResized", (e) => {
 ### Widget Updates
 
 ```javascript
-appjs.ui.setText("label1", "New text");
-appjs.ui.setValue("slider1", 75);
-appjs.ui.setChecked("checkbox1", true);
-appjs.ui.setVisible("widget1", false);
-appjs.ui.removeWidget("widget1");
+Vellum UI.ui.setText("label1", "New text");
+Vellum UI.ui.setValue("slider1", 75);
+Vellum UI.ui.setChecked("checkbox1", true);
+Vellum UI.ui.setVisible("widget1", false);
+Vellum UI.ui.removeWidget("widget1");
 ```
 
 ## Available Widgets
@@ -289,9 +289,9 @@ See the [`examples/`](examples/) directory:
   dynamic styling
 - **[`counter.js`](examples/counter.js)** -- Minimal counter example
 - **[`solid_counter.ts`](examples/solid_counter.ts)** -- SolidJS-powered counter
-  using `@appjs/solid-renderer`
+  using `@vellum/solid`
 - **[`solid_counter.tsx`](examples/solid_counter.tsx)** -- Solid TSX example
-  rendered through `@appjs/solid-renderer` (declarative accessor props for
+  rendered through `@vellum/solid` (declarative accessor props for
   `text`, `style`, and dynamic label state)
 
 ## Roadmap
@@ -309,7 +309,7 @@ This project is in its early stages. Here's what's planned:
       env) with secure defaults, similar to Deno's model
 - [ ] **Strict sandboxing** -- Apps run in a sandbox by default with no access
       to the system unless explicitly granted
-- [ ] **Shebang support** -- Add `#!/usr/bin/env appjs` to scripts and run them
+- [ ] **Shebang support** -- Add `#!/usr/bin/env Vellum UI` to scripts and run them
       directly as executables
 - [ ] **More widgets** -- Tables, trees, menus, dialogs, tabs, images
 - [ ] **Multi-window support** -- Open and manage multiple windows from a single
@@ -337,7 +337,7 @@ This is an early-stage project and contributions are very welcome! Whether it's:
 - Bug reports and feature requests
 - Code contributions (Rust or JS/TS)
 - Documentation improvements
-- Name suggestions (seriously, `appjs` is a placeholder!)
+- Name suggestions (seriously, `Vellum UI` is a placeholder!)
 
 Please open an issue to discuss before submitting large PRs.
 

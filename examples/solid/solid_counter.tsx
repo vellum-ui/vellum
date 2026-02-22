@@ -1,14 +1,14 @@
-import * as appjs from "@appjs/runtime";
-import { createAppJsRenderer, createSignal } from "@appjs/solid-renderer";
+import * as Vellum from "@vellum/core";
+import { createVellumRenderer, createSignal } from "@vellum/solid";
 
-appjs.window.setTitle("AppJS Solid TSX Demo");
-appjs.window.resize(700, 460);
-appjs.body.setStyle({
+Vellum.window.setTitle("Vellum Solid TSX Demo");
+Vellum.window.resize(700, 460);
+Vellum.body.setStyle({
     background: "#1e1e2e",
     padding: 24,
 });
 
-const renderer = createAppJsRenderer(appjs);
+const renderer = createVellumRenderer(Vellum);
 
 function Counter() {
     const [count, setCount] = createSignal(0);
@@ -16,7 +16,7 @@ function Counter() {
     return (
         <column gap={14} crossAxisAlignment="center">
             <label
-                text="Solid TSX + AppJS Custom Renderer"
+                text="Solid TSX + Vellum Custom Renderer"
                 fontSize={24}
                 fontWeight={700}
                 color="#cdd6f4"
@@ -47,7 +47,7 @@ function Counter() {
             </row>
 
             <label
-                text="This screen is authored as TSX and transpiled by appjs module loader."
+                text="This screen is authored as TSX and transpiled by Vellum module loader."
                 fontSize={13}
                 color="#a6adc8"
             />

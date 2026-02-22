@@ -1,6 +1,6 @@
-# AppJS Examples
+# Vellum UI Examples
 
-This folder is a Bun workspace package in the AppJS monorepo.
+This folder is a Bun workspace package in the Vellum UI monorepo.
 
 ## Install workspace deps
 
@@ -24,7 +24,7 @@ Or from this folder:
 bun run build
 ```
 
-## Run examples with AppJS runtime
+## Run examples with Vellum UI runtime
 
 From repo root:
 

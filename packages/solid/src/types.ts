@@ -1,9 +1,9 @@
 
 import { Component } from "solid-js";
 
-export type AppJsStyle = Record<string, unknown>;
+export type VellumStyle = Record<string, unknown>;
 
-export interface AppJsEvent {
+export interface VellumEvent {
   type: string;
   widgetId?: string;
   action?: string;
@@ -17,7 +17,7 @@ export interface AppJsEvent {
   focused?: boolean;
 }
 
-export interface AppJsRuntime {
+export interface VellumRuntime {
   nextId?: () => string;
   ui: {
     createWidget: (
@@ -25,7 +25,7 @@ export interface AppJsRuntime {
       kind: string,
       parentId: string | null,
       text: string | null,
-      style: AppJsStyle | null,
+      style: VellumStyle | null,
       params?: Record<string, unknown> | null,
       data?: Uint8Array | null
     ) => void;
@@ -34,16 +34,16 @@ export interface AppJsRuntime {
     setVisible: (id: string, visible: boolean) => void;
     setValue: (id: string, value: number) => void;
     setChecked: (id: string, checked: boolean) => void;
-    setStyle: (id: string, style: AppJsStyle) => void;
+    setStyle: (id: string, style: VellumStyle) => void;
     setStyleProperty: (id: string, property: string, value: string | number | boolean) => void;
     setImageData?: (id: string, data: Uint8Array) => void;
   };
   events: {
-    on: (type: string, callback: (event: AppJsEvent) => void) => () => void;
+    on: (type: string, callback: (event: VellumEvent) => void) => () => void;
   };
 }
 
-export type WidgetActionHandler = (event: AppJsEvent) => void;
+export type WidgetActionHandler = (event: VellumEvent) => void;
 
 export type HostNode = HostElement | HostText;
 
@@ -68,14 +68,14 @@ export interface HostText extends HostCommon {
   text: string;
 }
 
-export interface AppJsJsxNode {
-  __appjsJsx: true;
+export interface VellumJsxNode {
+  __VellumJsx: true;
   type: string;
   props?: Record<string, unknown>;
   owner?: unknown;
 }
 
-export interface AppJsRoot {
+export interface VellumRoot {
   nodeType: "root";
   parent: null;
   firstChild: HostNode | null;
@@ -84,48 +84,48 @@ export interface AppJsRoot {
   parentWidgetId: string | null;
 }
 
-export type HostParent = AppJsRoot | HostElement;
+export type HostParent = VellumRoot | HostElement;
 
 export interface RenderOptions {
   parentId?: string | null;
 }
 
-export interface AppJsHostElement {
+export interface VellumHostElement {
   nodeType: "element";
   widgetId: string;
 }
 
-export interface AppJsHostText {
+export interface VellumHostText {
   nodeType: "text";
   widgetId: string;
 }
 
-export interface AppJsRenderer {
-  createRoot(parentWidgetId?: string | null): AppJsRoot;
-  createHostElement(tag: string): AppJsHostElement;
-  createHostText(value: string): AppJsHostText;
+export interface VellumRenderer {
+  createRoot(parentWidgetId?: string | null): VellumRoot;
+  createHostElement(tag: string): VellumHostElement;
+  createHostText(value: string): VellumHostText;
   setHostProperty(
-    node: AppJsHostElement,
+    node: VellumHostElement,
     name: string,
     value: unknown,
     prev?: unknown
   ): void;
   appendHostNode(
-    parent: AppJsRoot | AppJsHostElement,
-    node: AppJsHostElement | AppJsHostText,
-    anchor?: AppJsHostElement | AppJsHostText | null
+    parent: VellumRoot | VellumHostElement,
+    node: VellumHostElement | VellumHostText,
+    anchor?: VellumHostElement | VellumHostText | null
   ): void;
-  render(code: () => unknown, options?: RenderOptions | AppJsRoot): AppJsRoot;
+  render(code: () => unknown, options?: RenderOptions | VellumRoot): VellumRoot;
   dispose(): void;
 }
 
-export interface AppJsCommonProps {
+export interface VellumCommonProps {
   // Accessor form is supported for non-event props by renderer reactivity.
   // Keep this broad to avoid fighting editor JSX inference.
   id?: string;
   key?: string | number;
   ref?: (node: unknown) => void;
-  style?: AppJsStyle | (() => AppJsStyle);
+  style?: VellumStyle | (() => VellumStyle);
   text?: string | (() => string);
   value?: number | (() => number);
   checked?: boolean | (() => boolean);
@@ -138,51 +138,51 @@ export interface AppJsCommonProps {
   [key: string]: unknown;
 }
 
-export interface SliderProps extends AppJsCommonProps {
+export interface SliderProps extends VellumCommonProps {
   min?: number | (() => number);
   max?: number | (() => number);
   step?: number | (() => number);
   value?: number | (() => number);
 }
 
-export interface CheckboxProps extends AppJsCommonProps {
+export interface CheckboxProps extends VellumCommonProps {
   checked?: boolean | (() => boolean);
 }
 
-export interface ProgressBarProps extends AppJsCommonProps {
+export interface ProgressBarProps extends VellumCommonProps {
   value?: number | (() => number);
 }
 
-export interface TextInputProps extends AppJsCommonProps {
+export interface TextInputProps extends VellumCommonProps {
   placeholder?: string | (() => string);
 }
 
-export interface ImageProps extends AppJsCommonProps {
+export interface ImageProps extends VellumCommonProps {
   data?: Uint8Array | (() => Uint8Array);
   objectFit?: string | (() => string);
 }
 
-export type AppJsIntrinsicElements = {
-  [tagName: string]: AppJsCommonProps;
-  label: AppJsCommonProps;
-  button: AppJsCommonProps;
+export type VellumIntrinsicElements = {
+  [tagName: string]: VellumCommonProps;
+  label: VellumCommonProps;
+  button: VellumCommonProps;
   checkbox: CheckboxProps;
   textInput: TextInputProps;
   slider: SliderProps;
   progressBar: ProgressBarProps;
-  spinner: AppJsCommonProps;
-  prose: AppJsCommonProps;
-  flex: AppJsCommonProps;
-  row: AppJsCommonProps;
-  column: AppJsCommonProps;
-  box: AppJsCommonProps;
-  zstack: AppJsCommonProps;
-  portal: AppJsCommonProps;
+  spinner: VellumCommonProps;
+  prose: VellumCommonProps;
+  flex: VellumCommonProps;
+  row: VellumCommonProps;
+  column: VellumCommonProps;
+  box: VellumCommonProps;
+  zstack: VellumCommonProps;
+  portal: VellumCommonProps;
   image: ImageProps;
 };
 
 // Types for JSX namespace
 export namespace JSX {
-  export interface IntrinsicElements extends AppJsIntrinsicElements { }
+  export interface IntrinsicElements extends VellumIntrinsicElements { }
 }
 

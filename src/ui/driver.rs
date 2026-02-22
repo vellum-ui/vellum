@@ -12,14 +12,14 @@ use super::widgets::hoverable::HoverAction;
 ///
 /// When on_action is called with a JsCommandAction (sent via EventLoopProxy from the JS thread),
 /// it mutates the widget tree to create, update, or remove widgets.
-pub struct AppJsDriver {
+pub struct VellumDriver {
     /// Sender for UI events back to the JS thread
     pub event_sender: UiEventSender,
     /// Manages JS widget ID → masonry WidgetId mapping
     pub widget_manager: WidgetManager,
 }
 
-impl AppJsDriver {
+impl VellumDriver {
     pub fn new(event_sender: UiEventSender) -> Self {
         Self {
             event_sender,
@@ -47,7 +47,7 @@ impl AppJsDriver {
     }
 }
 
-impl AppDriver for AppJsDriver {
+impl AppDriver for VellumDriver {
     fn on_action(
         &mut self,
         window_id: WindowId,

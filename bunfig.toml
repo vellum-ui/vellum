@@ -1,2 +1,2 @@
 jsx = "react-jsx"
-jsxImportSource = "@appjs/solid-renderer"
+jsxImportSource = "@vellum/solid"

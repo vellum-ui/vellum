@@ -1,5 +1,5 @@
-import * as appjs from "@appjs/runtime";
-import { createAppJsRenderer, createSignal } from "@appjs/solid-renderer";
+import * as Vellum from "@vellum/core";
+import { createVellumRenderer, createSignal } from "@vellum/solid";
 
 type ThemeName = "light" | "dark";
 type Operator = "+" | "-" | "×" | "÷";
@@ -62,10 +62,10 @@ const THEMES: Record<ThemeName, Theme> = {
     },
 };
 
-appjs.window.setTitle("AppJS Solid Calculator");
-appjs.window.resize(440, 800);
+Vellum.window.setTitle("Vellum Solid Calculator");
+Vellum.window.resize(440, 800);
 
-const renderer = createAppJsRenderer(appjs);
+const renderer = createVellumRenderer(Vellum);
 
 function Calculator() {
     const [themeName, setThemeName] = createSignal<ThemeName>("dark");
@@ -261,7 +261,7 @@ function Calculator() {
         background: theme().rootBackground,
     });
 
-    appjs.body.setStyle(shellBackground());
+    Vellum.body.setStyle(shellBackground());
 
     return (
         <column

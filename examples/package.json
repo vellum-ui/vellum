@@ -1,12 +1,11 @@
 {
-  "name": "@appjs/examples",
+  "name": "@vellum/examples",
   "private": true,
   "type": "module",
-  "scripts": {
-  },
+  "scripts": {},
   "dependencies": {
-    "@appjs/runtime": "workspace:*",
-    "@appjs/solid-renderer": "workspace:*",
+    "@vellum/core": "workspace:*",
+    "@vellum/solid": "workspace:*",
     "solid-js": "^1.9.11"
   },
   "devDependencies": {

@@ -16,7 +16,7 @@ use masonry::theme::default_property_set;
 use masonry_winit::app::{EventLoopProxy, NewWindow, WindowId};
 use masonry_winit::winit::window::Window;
 
-use self::driver::AppJsDriver;
+use self::driver::VellumDriver;
 use self::layout::create_initial_ui;
 use self::widget_manager::ROOT_FLEX_TAG;
 use crate::ipc::UiEventSender;
@@ -54,13 +54,13 @@ pub fn run_ui_blocking(
     let window_size = LogicalSize::new(800.0, 600.0);
 
     let window_attributes = Window::default_attributes()
-        .with_title("AppJS - JavaScript Desktop Runtime")
+        .with_title("Vellum - JavaScript Desktop Runtime")
         .with_resizable(true)
         .with_min_inner_size(LogicalSize::new(400.0, 300.0))
         .with_inner_size(window_size);
 
     let error_sender = event_sender.clone();
-    let driver = AppJsDriver::new(event_sender);
+    let driver = VellumDriver::new(event_sender);
     let main_widget = create_initial_ui();
 
     masonry_winit::app::run_with(

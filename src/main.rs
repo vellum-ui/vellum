@@ -1,4 +1,4 @@
-// AppJS - JavaScript Desktop Runtime
+// Vellum - JavaScript Desktop Runtime
 //
 // This application implements a dual-threaded architecture:
 // - Main Thread (UI): Owns the window and widget tree via masonry_winit
@@ -21,7 +21,7 @@ use ipc::server::run_ipc_server;
 use ui::{prepare_ui, run_ui_blocking};
 
 fn main() {
-    println!("AppJS Starting...");
+    println!("Vellum Starting...");
 
     let rust_log = std::env::var("RUST_LOG").ok();
     let should_override_log = match rust_log.as_deref() {
@@ -78,5 +78,5 @@ fn main() {
         eprintln!("[Main] IPC server thread panicked: {:?}", e);
     }
 
-    println!("[Main] AppJS shutdown complete");
+    println!("[Main] Vellum shutdown complete");
 }

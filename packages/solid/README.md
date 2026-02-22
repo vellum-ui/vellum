@@ -1,6 +1,6 @@
-# @appjs/solid-renderer
+# @vellum/solid
 
-SolidJS custom renderer targeting the AppJS runtime bridge.
+SolidJS custom renderer targeting the Vellum UI runtime bridge.
 
 ## What Works Today
 
@@ -12,22 +12,22 @@ SolidJS custom renderer targeting the AppJS runtime bridge.
 
 ## Runtime Imports
 
-In external AppJS projects (examples repo), use published npm specifiers:
+In external Vellum UI projects (examples repo), use published npm specifiers:
 
 ```ts
 import { createSignal } from "npm:solid-js";
-import * as appjs from "npm:@appjs/runtime";
-import { createAppJsRenderer } from "npm:@appjs/solid-renderer";
+import * as Vellum UI from "npm:@vellum/core";
+import { createVellum UIRenderer } from "npm:@vellum/solid";
 ```
 
 ## Usage (Idiomatic TSX)
 
 ```tsx
 import { createSignal } from "npm:solid-js";
-import * as appjs from "npm:@appjs/runtime";
-import { createAppJsRenderer } from "npm:@appjs/solid-renderer";
+import * as Vellum UI from "npm:@vellum/core";
+import { createVellum UIRenderer } from "npm:@vellum/solid";
 
-const renderer = createAppJsRenderer(appjs);
+const renderer = createVellum UIRenderer(Vellum UI);
 
 function Counter() {
     const [count, setCount] = createSignal(0);
@@ -74,7 +74,7 @@ Function-valued non-event props are tracked reactively:
 
 - Dynamic `children` updates currently use full subtree replacement for that
   node (no keyed diff yet).
-- Event surface is currently based on AppJS `widgetAction` events.
+- Event surface is currently based on Vellum UI `widgetAction` events.
 - Dev-time editor diagnostics in VS Code may not fully resolve `npm:`
   specifiers, but runtime execution works.
 
@@ -86,12 +86,12 @@ for low-level/manual flows.
 ## Install
 
 ```bash
-npm install @appjs/runtime @appjs/solid-renderer solid-js
+npm install @vellum/core @vellum/solid solid-js
 ```
 
 ## Tag Mapping
 
-- Intrinsic AppJS tags: `column`, `row`, `button`, `label`, `checkbox`,
+- Intrinsic Vellum UI tags: `column`, `row`, `button`, `label`, `checkbox`,
   `textInput`, `slider`, etc.
 - HTML-like aliases: `div`/`section`/`main`/`article` -> `flex` with column
   direction.

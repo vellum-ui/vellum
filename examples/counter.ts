@@ -1,7 +1,7 @@
 // Counter App Example — TypeScript Version
 // Demonstrates that .ts files work with full type annotations
-import * as appjs from "@appjs/runtime";
-import type { AppJsEvent } from "@appjs/runtime";
+import { body, button, column, events, label, row, ui, window } from "@vellum/core";
+import type { VellumEvent } from "@vellum/core";
 
 // ---- App logic with TypeScript features ----
 
@@ -16,52 +16,52 @@ const state: CounterState = {
 };
 
 function updateDisplay(s: CounterState): void {
-    appjs.ui.setText("countLabel", `Count: ${s.count}`);
-    appjs.ui.setText("stepLabel", `Step: ${s.step}`);
+    ui.setText("countLabel", `Count: ${s.count}`);
+    ui.setText("stepLabel", `Step: ${s.step}`);
 }
 
 // Set up the UI
-appjs.window.setTitle("TypeScript Counter");
+window.setTitle("TypeScript Counter");
 
-appjs.body.setStyle({ background: "#1e1e2e", padding: 24 });
+body.setStyle({ background: "#1e1e2e", padding: 24 });
 
-appjs.column("root", null, {
+column("root", null, {
     gap: 16,
     crossAxisAlignment: "center",
 });
 
-appjs.label("header", "root", "TypeScript Counter", {
+label("header", "root", "TypeScript Counter", {
     fontSize: 28,
     fontWeight: 700,
     color: "#cdd6f4",
 });
 
-appjs.label("countLabel", "root", `Count: ${state.count}`, {
+label("countLabel", "root", `Count: ${state.count}`, {
     fontSize: 48,
     fontWeight: 900,
     color: "#89b4fa",
 });
 
-appjs.label("stepLabel", "root", `Step: ${state.step}`, {
+label("stepLabel", "root", `Step: ${state.step}`, {
     fontSize: 16,
     color: "#a6adc8",
 });
 
 // Buttons row
-appjs.row("btnRow", "root", { gap: 12 });
-appjs.button("decBtn", "btnRow", "−");
-appjs.button("resetBtn", "btnRow", "Reset");
-appjs.button("incBtn", "btnRow", "⁺");
+row("btnRow", "root", { gap: 12 });
+button("decBtn", "btnRow", "−");
+button("resetBtn", "btnRow", "Reset");
+button("incBtn", "btnRow", "⁺");
 
 // Step control
-appjs.row("stepRow", "root", { gap: 12 });
-appjs.label("stepTitle", "stepRow", "Step size:", { color: "#a6adc8" });
-appjs.button("step1", "stepRow", "1");
-appjs.button("step5", "stepRow", "5");
-appjs.button("step10", "stepRow", "10");
+row("stepRow", "root", { gap: 12 });
+label("stepTitle", "stepRow", "Step size:", { color: "#a6adc8" });
+button("step1", "stepRow", "1");
+button("step5", "stepRow", "5");
+button("step10", "stepRow", "10");
 
 // Event handling with typed events
-appjs.events.on("widgetAction", (e: AppJsEvent) => {
+events.on("widgetAction", (e: VellumEvent) => {
     switch (e.widgetId) {
         case "incBtn":
             state.count += state.step;

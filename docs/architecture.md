@@ -1,11 +1,11 @@
 # architecture.md
 
-This document provides an overview of the `appjs` codebase structure, component
+This document provides an overview of the `Vellum UI` codebase structure, component
 responsibilities, and interaction flows.
 
 ## 1. High-Level Architecture
 
-`appjs` uses a **dual-threaded + subprocess architecture** to keep rendering
+`Vellum UI` uses a **dual-threaded + subprocess architecture** to keep rendering
 responsive while running JavaScript logic externally.
 
 ```mermaid
@@ -69,21 +69,21 @@ Handles native UI behavior via `masonry`.
 | File                    | Description                                                       |
 | ----------------------- | ----------------------------------------------------------------- |
 | **`mod.rs`**            | Builds event loop and runs UI.                                    |
-| **`driver.rs`**         | `AppJsDriver` bridges Masonry actions and incoming `JsCommand`s.  |
+| **`driver.rs`**         | `Vellum UIDriver` bridges Masonry actions and incoming `JsCommand`s.  |
 | **`handler.rs`**        | Central command dispatcher that mutates widgets and window state. |
 | **`creation.rs`**       | Widget creation helpers.                                          |
 | **`styles.rs`**         | Style conversion helpers.                                         |
 | **`widget_manager.rs`** | Maps JS widget IDs to Masonry `WidgetId`s.                        |
 | **`layout.rs`**         | Initial layout helpers.                                           |
 
-### `packages/appjs-runtime/src/`
+### `packages/Vellum UI-runtime/src/`
 
 JavaScript runtime package and Bun bootstrap.
 
 | File                | Description                                                               |
 | ------------------- | ------------------------------------------------------------------------- |
-| **`bun_bridge.ts`** | Runtime bridge module initialized when `@appjs/runtime` is imported in Bun. |
-| **`ops.ts`**        | Bridge-backed command API used by `@appjs/runtime`.                       |
+| **`bun_bridge.ts`** | Runtime bridge module initialized when `@vellum/core` is imported in Bun. |
+| **`ops.ts`**        | Bridge-backed command API used by `@vellum/core`.                       |
 | **`events.ts`**     | Event subscription layer fed by bridge-pushed UI events.                  |
 | **`index.ts`**      | Public JS API surface (`window`, `ui`, widgets, events, logging).         |
 
@@ -92,7 +92,7 @@ JavaScript runtime package and Bun bootstrap.
 1. **`main.rs`** creates UI event loop and IPC channels, then spawns the JS
    bridge thread.
 2. **`src/js_thread/mod.rs`** launches `bun run <script>` directly.
-3. Importing `@appjs/runtime` in the Bun script initializes `bun_bridge.ts`.
+3. Importing `@vellum/core` in the Bun script initializes `bun_bridge.ts`.
 4. UI actions produce `UiEvent` values which are MsgPack-encoded and streamed to
    Bun.
 5. Bun/runtime API emits command messages back over MsgPack.

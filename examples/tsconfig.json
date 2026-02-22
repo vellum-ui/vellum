@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@appjs/solid-renderer",
+    "jsxImportSource": "@vellum/solid",
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "allowJs": true,
@@ -16,17 +16,17 @@
       "bun-types"
     ],
     "paths": {
-      "@appjs/runtime": [
-        "../packages/appjs-runtime/src/index.ts"
+      "@vellum/core": [
+        "../packages/core/src/index.ts"
       ],
-      "@appjs/solid-renderer": [
-        "../packages/solid-renderer/src/index.ts"
+      "@vellum/solid": [
+        "../packages/solid/src/index.ts"
       ],
-      "@appjs/solid-renderer/jsx-runtime": [
-        "../packages/solid-renderer/src/jsx-runtime.ts"
+      "@vellum/solid/jsx-runtime": [
+        "../packages/solid/src/jsx-runtime.ts"
       ],
-      "@appjs/solid-renderer/jsx-dev-runtime": [
-        "../packages/solid-renderer/src/jsx-dev-runtime.ts"
+      "@vellum/solid/jsx-dev-runtime": [
+        "../packages/solid/src/jsx-dev-runtime.ts"
       ]
     }
   },

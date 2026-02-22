@@ -3,18 +3,18 @@ import { createRenderEffect, runWithOwner } from "solid-js/dist/solid.js";
 import type { Owner } from "solid-js";
 import { createRenderer } from "solid-js/universal";
 import {
-  AppJsRenderer,
-  AppJsRuntime,
-  AppJsRoot,
-  AppJsHostElement,
-  AppJsHostText,
+  VellumRenderer,
+  VellumRuntime,
+  VellumRoot,
+  VellumHostElement,
+  VellumHostText,
   HostNode,
   HostElement,
   HostText,
   HostParent,
   RenderOptions,
   WidgetActionHandler,
-  AppJsStyle,
+  VellumStyle,
 } from "./types";
 import {
   DEFAULT_PARENT_ID,
@@ -28,7 +28,7 @@ import {
   isNullish,
   isPrimitiveStyleValue,
   createEmptyStyle,
-  isAppJsJsxNode,
+  isVellumJsxNode,
   isHostNodeLike,
   normalizeChildrenArray,
   isReactiveAccessorProp,
@@ -37,7 +37,7 @@ import {
   resolveChildValue,
 } from "./utils";
 
-export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
+export function createVellumRenderer(runtime: VellumRuntime): VellumRenderer {
   const widgetNodeById = new Map<string, HostElement>();
   const jsxNodeMap = new WeakMap<object, HostNode>();
   let fallbackId = 0;
@@ -81,7 +81,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
     });
   }
 
-  function createRoot(parentWidgetId: string | null = DEFAULT_PARENT_ID): AppJsRoot {
+  function createRoot(parentWidgetId: string | null = DEFAULT_PARENT_ID): VellumRoot {
     return {
       nodeType: "root",
       parent: null,
@@ -129,7 +129,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
   function collectInitialWidgetState(node: HostElement): {
     kind: string;
     text: string | null;
-    style: AppJsStyle | null;
+    style: VellumStyle | null;
     params: Record<string, unknown> | null;
     data: Uint8Array | null;
   } {
@@ -203,7 +203,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       }
 
       if (name === "style" && typeof value === "object") {
-        Object.assign(style, value as AppJsStyle);
+        Object.assign(style, value as VellumStyle);
         hasStyle = true;
         continue;
       }
@@ -250,7 +250,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
 
     if (name === "style") {
       if (value && typeof value === "object") {
-        runtime.ui.setStyle(node.widgetId, value as AppJsStyle);
+        runtime.ui.setStyle(node.widgetId, value as VellumStyle);
       }
       return;
     }
@@ -446,7 +446,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       return buildTextNode(String(resolved));
     }
 
-    if (!isAppJsJsxNode(resolved)) {
+    if (!isVellumJsxNode(resolved)) {
       return null;
     }
 
@@ -507,14 +507,14 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
     return element;
   }
 
-  const renderer = createRenderer<HostNode | AppJsRoot>({
+  const renderer = createRenderer<HostNode | VellumRoot>({
     createElement(tag: string): HostElement {
       return buildElementNode(tag);
     },
     createTextNode(value: string): HostText {
       return buildTextNode(value);
     },
-    replaceText(node: HostNode | AppJsRoot, value: string): void {
+    replaceText(node: HostNode | VellumRoot, value: string): void {
       if (node.nodeType !== "text") return;
 
       node.text = String(value);
@@ -522,11 +522,11 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
         runtime.ui.setText(node.widgetId, node.text);
       }
     },
-    setProperty(node: HostNode | AppJsRoot, name: string, value: unknown, prev: unknown): void {
+    setProperty(node: HostNode | VellumRoot, name: string, value: unknown, prev: unknown): void {
       if (node.nodeType !== "element") return;
       setElementProperty(node, name, value, prev);
     },
-    insertNode(parent: HostNode | AppJsRoot, node: HostNode | AppJsRoot, anchor?: HostNode | AppJsRoot): void {
+    insertNode(parent: HostNode | VellumRoot, node: HostNode | VellumRoot, anchor?: HostNode | VellumRoot): void {
       const hostParent = parent as HostParent;
       const hostNode = materializeHostNode(node);
       if (!hostNode) return;
@@ -534,10 +534,10 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       const hostAnchor = materializeHostNode(anchor) ?? null;
       insertHostNode(hostParent, hostNode, hostAnchor);
     },
-    isTextNode(node: HostNode | AppJsRoot): boolean {
+    isTextNode(node: HostNode | VellumRoot): boolean {
       return node.nodeType === "text";
     },
-    removeNode(parent: HostNode | AppJsRoot, node: HostNode | AppJsRoot): void {
+    removeNode(parent: HostNode | VellumRoot, node: HostNode | VellumRoot): void {
       const hostParent = parent as HostParent;
       const hostNode = materializeHostNode(node);
       if (!hostNode) return;
@@ -545,19 +545,19 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       unlinkFromParent(hostParent, hostNode);
       unmountSubtree(hostNode);
     },
-    getParentNode(node: HostNode | AppJsRoot): HostParent | undefined {
+    getParentNode(node: HostNode | VellumRoot): HostParent | undefined {
       return node.parent ?? undefined;
     },
-    getFirstChild(node: HostNode | AppJsRoot): HostNode | undefined {
+    getFirstChild(node: HostNode | VellumRoot): HostNode | undefined {
       return node.firstChild ?? undefined;
     },
-    getNextSibling(node: HostNode | AppJsRoot): HostNode | undefined {
+    getNextSibling(node: HostNode | VellumRoot): HostNode | undefined {
       return node.nextSibling ?? undefined;
     },
   });
 
-  function render(code: () => unknown, options?: RenderOptions | AppJsRoot): AppJsRoot {
-    let root: AppJsRoot;
+  function render(code: () => unknown, options?: RenderOptions | VellumRoot): VellumRoot {
+    let root: VellumRoot;
     if (options && "nodeType" in options) {
       root = options;
     } else {
@@ -565,7 +565,7 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
       root = createRoot(renderOptions?.parentId ?? DEFAULT_PARENT_ID);
     }
 
-    renderer.render(code as () => HostNode | AppJsRoot, root);
+    renderer.render(code as () => HostNode | VellumRoot, root);
     return root;
   }
 
@@ -580,15 +580,15 @@ export function createAppJsRenderer(runtime: AppJsRuntime): AppJsRenderer {
   return {
     ...renderer,
     createRoot,
-    createHostElement: (tag: string): AppJsHostElement => buildElementNode(tag),
-    createHostText: (value: string): AppJsHostText => buildTextNode(value),
-    setHostProperty: (node: AppJsHostElement, name: string, value: unknown, prev?: unknown): void => {
+    createHostElement: (tag: string): VellumHostElement => buildElementNode(tag),
+    createHostText: (value: string): VellumHostText => buildTextNode(value),
+    setHostProperty: (node: VellumHostElement, name: string, value: unknown, prev?: unknown): void => {
       setElementProperty(node as HostElement, name, value, prev);
     },
     appendHostNode: (
-      parent: AppJsRoot | AppJsHostElement,
-      node: AppJsHostElement | AppJsHostText,
-      anchor?: AppJsHostElement | AppJsHostText | null
+      parent: VellumRoot | VellumHostElement,
+      node: VellumHostElement | VellumHostText,
+      anchor?: VellumHostElement | VellumHostText | null
     ): void => {
       insertHostNode(parent as HostParent, node as HostNode, (anchor as HostNode | null | undefined) ?? null);
     },
