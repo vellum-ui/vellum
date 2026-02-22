@@ -1,5 +1,5 @@
 {
-    "name": "@vellum/solid",
+    "name": "@vellum-ui/solid",
     "version": "0.1.0",
     "type": "module",
     "exports": {

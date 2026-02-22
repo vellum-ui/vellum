@@ -1,5 +1,5 @@
 {
-    "name": "@vellum/core",
+    "name": "@vellum-ui/core",
     "version": "0.1.0",
     "type": "module",
     "exports": {

@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@vellum'
+          scope: '@vellum-ui'
 
       - name: Publish to GitHub Packages
         working-directory: ${{ matrix.package-dir }}
