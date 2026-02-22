@@ -9,10 +9,6 @@
 > will change. It is not yet suitable for production use. Contributions,
 > feedback, and ideas are very welcome.
 
-> [!NOTE]
-> **The name `Vellum UI` is a placeholder** and we're open to suggestions for a
-> better name. If you have ideas, feel free to open an issue!
-
 ---
 
 ## What is Vellum UI?
