@@ -241,5 +241,17 @@ pub fn create_and_add_widget(
                 widget_id,
             );
         }
+        WidgetKind::Video => {
+            widgets::video::create(
+                render_root,
+                widget_manager,
+                id,
+                parent_id,
+                style,
+                data,
+                child_index,
+                widget_id,
+            );
+        }
     }
 }

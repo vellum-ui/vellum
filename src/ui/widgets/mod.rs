@@ -18,4 +18,6 @@ pub mod svg_widget_impl;
 pub mod text_area;
 pub mod text_input;
 pub mod utils;
+pub mod video;
+pub mod video_widget_impl;
 pub mod zstack;

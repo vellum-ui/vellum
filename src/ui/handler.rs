@@ -12,6 +12,7 @@ use super::creation::create_and_add_widget;
 use super::styles::{apply_box_props_to_widget, apply_flex_style, build_text_styles};
 use super::widget_manager::{ROOT_FLEX_TAG, WidgetManager};
 use super::widgets::svg_widget_impl::SvgWidget;
+use super::widgets::video_widget_impl::VideoWidget;
 
 fn report_runtime_error(event_sender: &UiEventSender, source: &str, message: String, fatal: bool) {
     if let Err(send_err) = event_sender.send(crate::ipc::UiEvent::RuntimeError {
@@ -159,6 +160,69 @@ pub fn handle_client_command(
             }
         }
 
+        ClientCommand::PlayVideo { id } => {
+            if let Some(info) = widget_manager.widgets.get(&id) {
+                let widget_id = info.widget_id;
+                if matches!(info.kind, WidgetKind::Video) {
+                    render_root.edit_widget(widget_id, |mut widget| {
+                        let mut video = widget.downcast::<VideoWidget>();
+                        VideoWidget::play(&mut video);
+                    });
+                } else {
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!("PlayVideo on {:?} is not supported for widget '{id}'", info.kind),
+                        false,
+                    );
+                }
+            } else {
+                eprintln!("[UI] Widget '{}' not found for PlayVideo", id);
+            }
+        }
+
+        ClientCommand::PauseVideo { id } => {
+            if let Some(info) = widget_manager.widgets.get(&id) {
+                let widget_id = info.widget_id;
+                if matches!(info.kind, WidgetKind::Video) {
+                    render_root.edit_widget(widget_id, |mut widget| {
+                        let mut video = widget.downcast::<VideoWidget>();
+                        VideoWidget::pause(&mut video);
+                    });
+                } else {
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!("PauseVideo on {:?} is not supported for widget '{id}'", info.kind),
+                        false,
+                    );
+                }
+            } else {
+                eprintln!("[UI] Widget '{}' not found for PauseVideo", id);
+            }
+        }
+
+        ClientCommand::SeekVideo { id, time_secs } => {
+            if let Some(info) = widget_manager.widgets.get(&id) {
+                let widget_id = info.widget_id;
+                if matches!(info.kind, WidgetKind::Video) {
+                    render_root.edit_widget(widget_id, |mut widget| {
+                        let mut video = widget.downcast::<VideoWidget>();
+                        VideoWidget::seek(&mut video, time_secs);
+                    });
+                } else {
+                    report_runtime_error(
+                        _event_sender,
+                        "ui-handler",
+                        format!("SeekVideo on {:?} is not supported for widget '{id}'", info.kind),
+                        false,
+                    );
+                }
+            } else {
+                eprintln!("[UI] Widget '{}' not found for SeekVideo", id);
+            }
+        }
+
         ClientCommand::SetWidgetChecked { id, checked } => {
             if let Some(info) = widget_manager.widgets.get(&id) {
                 let widget_id = info.widget_id;
@@ -259,6 +323,14 @@ pub fn handle_client_command(
                         // Images in masonry do not support arbitrary box styles natively like HTML.
                         // Width/height are handled by wrapping them in SizedBox (done in image.rs).
                         // We silently ignore box styles on the inner image here to prevent log spam.
+                    }
+                    WidgetKind::Video => {
+                        render_root.edit_widget(widget_id, |mut widget| {
+                            let mut video = widget.downcast::<crate::ui::widgets::video_widget_impl::VideoWidget>();
+                            apply_box_props_to_widget(&mut video, &style);
+                            crate::ui::widgets::video_widget_impl::VideoWidget::set_width(&mut video, style.width);
+                            crate::ui::widgets::video_widget_impl::VideoWidget::set_height(&mut video, style.height);
+                        });
                     }
                     _ => {
                         report_runtime_error(

@@ -38,6 +38,9 @@ export interface VellumRuntime {
     setStyle: (id: string, style: VellumStyle) => void;
     setStyleProperty: (id: string, property: string, value: string | number | boolean) => void;
     setImageData?: (id: string, data: Uint8Array) => void;
+    playVideo?: (id: string) => void;
+    pauseVideo?: (id: string) => void;
+    seekVideo?: (id: string, timeSecs: number) => void;
   };
   events: {
     on: (type: string, callback: (event: VellumEvent) => void) => () => void;
@@ -163,31 +166,50 @@ export interface ImageProps extends VellumCommonProps {
   objectFit?: string | (() => string);
 }
 
+export interface VideoProps extends VellumCommonProps {
+  src?: string | (() => string);
+}
 
 export interface HoverableProps extends VellumCommonProps {
   /** Hoverable accepts only a single child element. Wrap multiple children in a `<flex>` or `<row>`. */
   children?: SolidJSX.Element;
 }
 
-export type VellumIntrinsicElements = {
-  [tagName: string]: VellumCommonProps;
-  label: VellumCommonProps;
-  button: VellumCommonProps;
-  checkbox: CheckboxProps;
-  textInput: TextInputProps;
-  slider: SliderProps;
-  progressBar: ProgressBarProps;
-  spinner: VellumCommonProps;
-  prose: VellumCommonProps;
-  flex: VellumCommonProps;
+export interface FlexProps extends VellumCommonProps {
+  // Assuming FlexProps is similar to VellumCommonProps for now,
+  // as its definition was not provided in the original document or the instruction.
+  // If it has specific properties, they should be added here.
+}
+
+export interface VellumIntrinsicElements {
+  box: VellumCommonProps;
+  flex: FlexProps;
   row: VellumCommonProps;
   column: VellumCommonProps;
-  box: VellumCommonProps;
-  zstack: VellumCommonProps;
-  portal: VellumCommonProps;
+  container: VellumCommonProps;
+  sizedBox: VellumCommonProps;
+  button: VellumCommonProps & { text?: string | (() => string); };
+  iconButton: VellumCommonProps;
+  label: VellumCommonProps;
+  textInput: TextInputProps;
+  textArea: VellumCommonProps;
+  checkbox: CheckboxProps;
+  progressBar: ProgressBarProps;
+  spinner: VellumCommonProps;
+  slider: SliderProps;
+  svg: VellumCommonProps;
   image: ImageProps;
-  hoverable: HoverableProps;
-};
+  prose: VellumCommonProps;
+  grid: VellumCommonProps;
+  stack: VellumCommonProps;
+  hoverable: VellumCommonProps;
+  video: VellumCommonProps & {
+    src?: string | (() => string);
+    playing?: boolean | (() => boolean);
+    position?: number | (() => number);
+  };
+  [tag: string]: unknown;
+}
 
 // Types for JSX namespace
 export namespace JSX {

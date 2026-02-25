@@ -80,6 +80,7 @@ fn parse_widget_kind(kind: &str) -> WidgetKind {
         "ZStack" | "zstack" | "z_stack" | "stack" => WidgetKind::ZStack,
         "Portal" | "portal" | "scroll" => WidgetKind::Portal,
         "Hoverable" | "hoverable" => WidgetKind::Hoverable,
+        "Video" | "video" => WidgetKind::Video,
         other => WidgetKind::Custom(other.to_string()),
     }
 }
@@ -146,6 +147,11 @@ fn handle_client_message(message: ClientMessage) -> Option<ClientCommand> {
         ClientMessage::CloseWindow => Some(ClientCommand::CloseWindow),
         ClientMessage::ExitApp => Some(ClientCommand::ExitApp),
         ClientMessage::SetImageData { id, data } => Some(ClientCommand::SetImageData { id, data }),
+        ClientMessage::PlayVideo { id } => Some(ClientCommand::PlayVideo { id }),
+        ClientMessage::PauseVideo { id } => Some(ClientCommand::PauseVideo { id }),
+        ClientMessage::SeekVideo { id, time_secs } => {
+            Some(ClientCommand::SeekVideo { id, time_secs })
+        }
     }
 }
 
@@ -291,6 +297,11 @@ fn build_widget_data(
         WidgetKind::Portal => Some(WidgetData::Portal),
         WidgetKind::Grid => Some(WidgetData::Grid),
         WidgetKind::Hoverable => Some(WidgetData::Hoverable),
+
+        WidgetKind::Video => {
+            let src = get_string("src").unwrap_or_default();
+            Some(WidgetData::Video { src })
+        }
 
         WidgetKind::Custom(name) => Some(WidgetData::Custom(name.clone())),
     }

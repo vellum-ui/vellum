@@ -66,7 +66,10 @@ export type JsToRustMessage =
     | { type: "resizeWindow"; width: number; height: number }
     | { type: "closeWindow" }
     | { type: "exitApp" }
-    | { type: "setImageData"; id: string; data: Uint8Array };
+    | { type: "setImageData"; id: string; data: Uint8Array }
+    | { type: "playVideo"; id: string }
+    | { type: "pauseVideo"; id: string }
+    | { type: "seekVideo"; id: string; time_secs: number };
 
 type RustToJsMessage =
     | { type: "uiEvent"; event: unknown }

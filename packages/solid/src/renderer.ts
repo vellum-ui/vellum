@@ -156,6 +156,7 @@ export function createVellumRenderer(runtime: VellumRuntime): VellumRenderer {
       if (name === "visible") continue;
       if (name === "data") continue;
       if (name === "objectFit") continue;
+      if (name === "src" || name === "playing" || name === "position") continue;
 
       if (name === "text") {
         text = String(value);
@@ -229,6 +230,14 @@ export function createVellumRenderer(runtime: VellumRuntime): VellumRenderer {
       }
     }
 
+    if (kind === "video") {
+      const src = node.props.src;
+      if (typeof src === "string") {
+        params.src = src;
+        hasParams = true;
+      }
+    }
+
     if (kind === "progressBar" && params.value !== undefined && params.progress === undefined) {
       params.progress = params.value;
       delete params.value;
@@ -245,8 +254,22 @@ export function createVellumRenderer(runtime: VellumRuntime): VellumRenderer {
 
   function applyMountedProperty(node: HostElement, name: string, value: unknown): void {
     if (name === "children" || name === "ref" || name === "key" || name === "id") return;
-    if (name === "type") return;
+    if (name === "type" || name === "src") return;
     if (isEventProp(name)) return;
+
+    if (name === "playing" && typeof value === "boolean") {
+      if (value) {
+        runtime.ui.playVideo?.(node.widgetId);
+      } else {
+        runtime.ui.pauseVideo?.(node.widgetId);
+      }
+      return;
+    }
+
+    if (name === "position" && typeof value === "number") {
+      runtime.ui.seekVideo?.(node.widgetId, value);
+      return;
+    }
 
     if (name === "style") {
       if (value && typeof value === "object") {

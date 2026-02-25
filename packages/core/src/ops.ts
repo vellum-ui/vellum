@@ -81,3 +81,15 @@ export function exit(): void {
 export function setImageData(id: string, data: Uint8Array): void {
     bridge.send({ type: "setImageData", id, data });
 }
+
+export function playVideo(id: string): void {
+    bridge.send({ type: "playVideo", id });
+}
+
+export function pauseVideo(id: string): void {
+    bridge.send({ type: "pauseVideo", id });
+}
+
+export function seekVideo(id: string, timeSecs: number): void {
+    bridge.send({ type: "seekVideo", id, time_secs: timeSecs });
+}

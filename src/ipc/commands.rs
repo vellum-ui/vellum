@@ -40,6 +40,15 @@ pub enum ClientCommand {
     /// Set progress on a ProgressBar (0.0 to 1.0)
     SetWidgetValue { id: String, value: f64 },
 
+    /// Play the video
+    PlayVideo { id: String },
+
+    /// Pause the video
+    PauseVideo { id: String },
+
+    /// Seek the video to a specific time
+    SeekVideo { id: String, time_secs: f64 },
+
     /// Set image data on an Image widget (raw file bytes)
     SetImageData { id: String, data: Vec<u8> },
 
@@ -77,6 +86,7 @@ pub enum WidgetKind {
     ZStack,
     Portal,
     Hoverable,
+    Video,
     Custom(String),
 }
 
@@ -143,6 +153,9 @@ pub enum WidgetData {
 
     /// Hoverable — container that tracks hover state
     Hoverable,
+
+    /// Video player — src is a file path or HTTP URL
+    Video { src: String },
 
     /// Custom widget
     Custom(String),

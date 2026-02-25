@@ -74,6 +74,16 @@ pub enum ClientMessage {
         #[serde(with = "serde_bytes")]
         data: Vec<u8>,
     },
+    PlayVideo {
+        id: String,
+    },
+    PauseVideo {
+        id: String,
+    },
+    SeekVideo {
+        id: String,
+        time_secs: f64,
+    },
 }
 
 pub fn write_msgpack_frame<W, T>(writer: &mut W, value: &T) -> io::Result<()>

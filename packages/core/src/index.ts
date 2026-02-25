@@ -9,6 +9,7 @@ import type {
     SliderParams,
     SvgParams,
     TextInputParams,
+    VideoParams,
 } from "./types.ts";
 import {
     closeWindow,
@@ -24,6 +25,9 @@ import {
     setWidgetText,
     setWidgetValue,
     setWidgetVisible,
+    playVideo,
+    pauseVideo,
+    seekVideo,
 } from "./ops.ts";
 import { events } from "./events.ts";
 
@@ -63,6 +67,9 @@ export const ui = {
     setStyle: setWidgetStyle,
     setStyleProperty,
     setImageData,
+    playVideo,
+    pauseVideo,
+    seekVideo,
 
     setWidgetText,
     setWidgetVisible,
@@ -210,6 +217,24 @@ export function image(
     return id;
 }
 
+export function video(
+    id: string,
+    parentId: string | null,
+    src: string,
+    style?: VellumStyle
+): string {
+    const paramsJson: VideoParams = { src };
+    ui.createWidget(
+        id,
+        "video",
+        parentId,
+        null,
+        style ?? null,
+        paramsJson
+    );
+    return id;
+}
+
 export const app = {
     window,
     body,
@@ -221,6 +246,7 @@ export const app = {
     iconButton,
     svg,
     image,
+    video,
     flex,
     row,
     column,

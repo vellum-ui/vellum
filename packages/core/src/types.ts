@@ -57,6 +57,10 @@ export interface ImageParams {
     object_fit?: string;
 }
 
+export interface VideoParams {
+    src?: string;
+}
+
 export interface CheckboxParams {
     checked: boolean;
 }
