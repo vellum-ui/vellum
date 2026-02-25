@@ -91,7 +91,9 @@ impl AppDriver for VellumDriver {
         }
 
         if let Some(hover_action) = action.downcast_ref::<HoverAction>() {
-            if let Some(id) = self.find_client_id(hover_action.child_widget_id) {
+            // The action is submitted by the Hoverable widget itself,
+            // so widget_id is the Hoverable's masonry WidgetId.
+            if let Some(id) = self.find_client_id(widget_id) {
                 if let Err(send_err) = self.event_sender.send(UiEvent::WidgetAction {
                     widget_id: id,
                     action: WidgetActionKind::HoverChanged(hover_action.hovered),

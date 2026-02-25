@@ -1,34 +1,42 @@
 use masonry::accesskit::{Node, Role};
 use masonry::core::{
     AccessCtx, BoxConstraints, ChildrenIds, LayoutCtx, NewWidget, PaintCtx, PropertiesMut,
-    PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetPod,
+    PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetMut, WidgetPod,
 };
 use masonry::vello::Scene;
+use masonry::widgets::SizedBox;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HoverAction {
-    pub child_widget_id: WidgetId,
     pub hovered: bool,
 }
 
 pub struct Hoverable {
     child: WidgetPod<dyn Widget>,
-    child_widget_id: WidgetId,
     self_hovered: bool,
     child_hovered: bool,
     effective_hovered: bool,
 }
 
 impl Hoverable {
-    pub fn new(child: NewWidget<impl Widget + ?Sized>) -> Self {
-        let child_widget_id = child.id();
+    /// Creates a Hoverable with an empty placeholder child.
+    /// The real child will be set later via `set_child`.
+    pub fn new_empty() -> Self {
+        let placeholder = NewWidget::new(SizedBox::empty());
         Self {
-            child: child.erased().to_pod(),
-            child_widget_id,
+            child: placeholder.erased().to_pod(),
             self_hovered: false,
             child_hovered: false,
             effective_hovered: false,
         }
+    }
+
+    /// Replace the child widget at runtime.
+    pub fn set_child(this: &mut WidgetMut<'_, Self>, child: NewWidget<impl Widget + ?Sized>) {
+        this.ctx.remove_child(std::mem::replace(
+            &mut this.widget.child,
+            child.erased().to_pod(),
+        ));
     }
 
     fn update_hover_state(&mut self, ctx: &mut UpdateCtx<'_>) {
@@ -36,7 +44,6 @@ impl Hoverable {
         if hovered != self.effective_hovered {
             self.effective_hovered = hovered;
             ctx.submit_action::<<Hoverable as Widget>::Action>(HoverAction {
-                child_widget_id: self.child_widget_id,
                 hovered,
             });
         }
@@ -45,6 +52,10 @@ impl Hoverable {
 
 impl Widget for Hoverable {
     type Action = HoverAction;
+
+    fn accepts_pointer_interaction(&self) -> bool {
+        false
+    }
 
     fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
         ctx.register_child(&mut self.child);

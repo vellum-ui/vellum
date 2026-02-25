@@ -293,17 +293,33 @@ pub fn handle_client_command(
                 id, property, value
             );
             // Build a partial style and delegate
-            let json_str = if value.starts_with('"')
-                || value.parse::<f64>().is_ok()
-                || value == "true"
-                || value == "false"
-                || value.starts_with('{')
-                || value.starts_with('[')
-            {
-                format!("{{\"{}\": {}}}", property, value)
-            } else {
-                format!("{{\"{}\": \"{}\"}}", property, value)
-            };
+            // Build a JSON value properly so control characters (newlines in SVG
+            // strings, etc.) are escaped correctly instead of being embedded raw.
+            let parsed_value: serde_json::Value =
+                if let Ok(n) = value.parse::<f64>() {
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(n)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    )
+                } else if value == "true" {
+                    serde_json::Value::Bool(true)
+                } else if value == "false" {
+                    serde_json::Value::Bool(false)
+                } else if (value.starts_with('{') || value.starts_with('['))
+                    && serde_json::from_str::<serde_json::Value>(&value).is_ok()
+                {
+                    serde_json::from_str(&value).unwrap()
+                } else {
+                    // Strip surrounding quotes if present, then use
+                    // serde_json::Value::String which handles escaping.
+                    let raw = value
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .unwrap_or(&value);
+                    serde_json::Value::String(raw.to_string())
+                };
+
+            let json_str = serde_json::json!({ &property: parsed_value }).to_string();
 
             let style = match serde_json::from_str::<BoxStyle>(&json_str) {
                 Ok(s) => s,

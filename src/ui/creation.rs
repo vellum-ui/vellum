@@ -205,6 +205,17 @@ pub fn create_and_add_widget(
                 widget_id,
             );
         }
+        WidgetKind::Hoverable => {
+            widgets::hoverable_create::create(
+                render_root,
+                widget_manager,
+                id,
+                parent_id,
+                style,
+                child_index,
+                widget_id,
+            );
+        }
         WidgetKind::Custom(_) => {
             widgets::custom::create(
                 render_root,

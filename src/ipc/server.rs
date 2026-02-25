@@ -79,6 +79,7 @@ fn parse_widget_kind(kind: &str) -> WidgetKind {
         "Grid" | "grid" => WidgetKind::Grid,
         "ZStack" | "zstack" | "z_stack" | "stack" => WidgetKind::ZStack,
         "Portal" | "portal" | "scroll" => WidgetKind::Portal,
+        "Hoverable" | "hoverable" => WidgetKind::Hoverable,
         other => WidgetKind::Custom(other.to_string()),
     }
 }
@@ -289,6 +290,7 @@ fn build_widget_data(
         WidgetKind::ZStack => Some(WidgetData::ZStack),
         WidgetKind::Portal => Some(WidgetData::Portal),
         WidgetKind::Grid => Some(WidgetData::Grid),
+        WidgetKind::Hoverable => Some(WidgetData::Hoverable),
 
         WidgetKind::Custom(name) => Some(WidgetData::Custom(name.clone())),
     }

@@ -1,5 +1,6 @@
 
 import { Component } from "solid-js";
+import type { JSX as SolidJSX } from "solid-js";
 
 export type VellumStyle = Record<string, unknown>;
 
@@ -162,6 +163,12 @@ export interface ImageProps extends VellumCommonProps {
   objectFit?: string | (() => string);
 }
 
+
+export interface HoverableProps extends VellumCommonProps {
+  /** Hoverable accepts only a single child element. Wrap multiple children in a `<flex>` or `<row>`. */
+  children?: SolidJSX.Element;
+}
+
 export type VellumIntrinsicElements = {
   [tagName: string]: VellumCommonProps;
   label: VellumCommonProps;
@@ -179,6 +186,7 @@ export type VellumIntrinsicElements = {
   zstack: VellumCommonProps;
   portal: VellumCommonProps;
   image: ImageProps;
+  hoverable: HoverableProps;
 };
 
 // Types for JSX namespace

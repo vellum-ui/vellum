@@ -76,6 +76,7 @@ pub enum WidgetKind {
     Grid,
     ZStack,
     Portal,
+    Hoverable,
     Custom(String),
 }
 
@@ -139,6 +140,9 @@ pub enum WidgetData {
 
     /// Grid — no extra data (fallback to Flex)
     Grid,
+
+    /// Hoverable — container that tracks hover state
+    Hoverable,
 
     /// Custom widget
     Custom(String),

@@ -18,14 +18,13 @@ pub fn add_to_parent(
     flex_factor: Option<f64>,
 ) -> bool {
     let parent_key = parent_id.as_deref().unwrap_or("__root__");
-    let wrapped_widget = NewWidget::new(Hoverable::new(new_widget));
 
     if parent_id.is_none() {
         render_root.edit_widget_with_tag(ROOT_FLEX_TAG, |mut flex| {
             if let Some(factor) = flex_factor {
-                Flex::add_flex_child(&mut flex, wrapped_widget, factor);
+                Flex::add_flex_child(&mut flex, new_widget, factor);
             } else {
-                Flex::add_child(&mut flex, wrapped_widget);
+                Flex::add_child(&mut flex, new_widget);
             }
         });
         true
@@ -36,9 +35,9 @@ pub fn add_to_parent(
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut flex = parent_widget.downcast::<Flex>();
                     if let Some(factor) = flex_factor {
-                        Flex::add_flex_child(&mut flex, wrapped_widget, factor);
+                        Flex::add_flex_child(&mut flex, new_widget, factor);
                     } else {
-                        Flex::add_child(&mut flex, wrapped_widget);
+                        Flex::add_child(&mut flex, new_widget);
                     }
                 });
                 true
@@ -50,9 +49,9 @@ pub fn add_to_parent(
                     let mut child = masonry::widgets::Button::child_mut(&mut btn);
                     let mut flex = child.downcast::<Flex>();
                     if let Some(factor) = flex_factor {
-                        Flex::add_flex_child(&mut flex, wrapped_widget, factor);
+                        Flex::add_flex_child(&mut flex, new_widget, factor);
                     } else {
-                        Flex::add_child(&mut flex, wrapped_widget);
+                        Flex::add_child(&mut flex, new_widget);
                     }
                 });
                 true
@@ -61,7 +60,7 @@ pub fn add_to_parent(
                 let parent_wid = parent_info.widget_id;
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut sbox = parent_widget.downcast::<SizedBox>();
-                    SizedBox::set_child(&mut sbox, wrapped_widget);
+                    SizedBox::set_child(&mut sbox, new_widget);
                 });
                 true
             }
@@ -69,13 +68,34 @@ pub fn add_to_parent(
                 let parent_wid = parent_info.widget_id;
                 render_root.edit_widget(parent_wid, |mut parent_widget| {
                     let mut zs = parent_widget.downcast::<ZStack>();
-                    ZStack::insert_child(&mut zs, wrapped_widget, ChildAlignment::ParentAligned);
+                    ZStack::insert_child(&mut zs, new_widget, ChildAlignment::ParentAligned);
+                });
+                true
+            }
+            WidgetKind::Hoverable => {
+                let parent_wid = parent_info.widget_id;
+                // Check if hoverable already has a child — count existing children
+                let child_count = widget_manager
+                    .widgets
+                    .values()
+                    .filter(|info| info.parent_id.as_deref() == Some(parent_key))
+                    .count();
+                if child_count > 0 {
+                    eprintln!(
+                        "[UI] Hoverable '{}' already has a child. Hoverable can only have one child — wrap multiple children in a <flex> or <row>.",
+                        parent_key
+                    );
+                    return false;
+                }
+                render_root.edit_widget(parent_wid, |mut parent_widget| {
+                    let mut hoverable = parent_widget.downcast::<Hoverable>();
+                    Hoverable::set_child(&mut hoverable, new_widget);
                 });
                 true
             }
             other => {
                 eprintln!(
-                    "[UI] Cannot add child to widget '{}' of kind {:?} — only Flex/Container/SizedBox/ZStack can have children",
+                    "[UI] Cannot add child to widget '{}' of kind {:?} — only Flex/Container/SizedBox/ZStack/Hoverable can have children",
                     parent_key, other
                 );
                 false
@@ -86,3 +106,4 @@ pub fn add_to_parent(
         false
     }
 }
+
