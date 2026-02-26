@@ -136,20 +136,35 @@ impl VideoWidget {
         uri: &str,
         frame_store: Arc<Mutex<Option<VideoFrame>>>,
     ) -> Option<gst::Element> {
-        let pipeline = gst::parse::launch(&format!(
-            "uridecodebin uri={uri} ! videoconvert ! video/x-raw,format=RGBA ! appsink name=sink"
-        ));
+        let pipeline = gst::ElementFactory::make("playbin")
+            .property("uri", uri)
+            .build();
 
         let pipeline = match pipeline {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("[VideoWidget] Pipeline parse error: {}", e);
+                eprintln!("[VideoWidget] Pipeline creation error: {}", e);
                 return None;
             }
         };
 
+        let video_sink = gst::parse::bin_from_description(
+            "videoconvert ! video/x-raw,format=RGBA ! appsink name=sink",
+            true,
+        );
+
+        let video_sink = match video_sink {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("[VideoWidget] Video sink creation error: {}", e);
+                return None;
+            }
+        };
+
+        pipeline.set_property("video-sink", &video_sink);
+
         // Find the appsink and configure it
-        let sink = pipeline
+        let sink = video_sink
             .dynamic_cast_ref::<gst::Bin>()?
             .by_name("sink")?;
         let appsink = sink.dynamic_cast::<gst_app::AppSink>().ok()?;
