@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use gstreamer as gst;
@@ -16,6 +16,8 @@ use masonry::peniko::{Blob, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
 use masonry::vello::Scene;
 use masonry::vello::wgpu;
 use std::sync::mpsc::{Receiver, channel};
+use std::thread::JoinHandle;
+use std::time::Duration;
 
 use crate::ui::global_state::{get_event_loop_proxy, get_wgpu_context};
 use masonry_winit::app::MasonryUserEvent;
@@ -31,6 +33,12 @@ pub enum VideoAction {
 }
 
 static VIDEO_WIDGET_COUNTER: AtomicUsize = AtomicUsize::new(1);
+
+struct VideoPipelineRuntime {
+    pipeline: gst::Element,
+    worker_alive: Arc<AtomicBool>,
+    worker: JoinHandle<()>,
+}
 
 fn create_unique_overlay_key(width: u32, height: u32) -> ImageData {
     let id = VIDEO_WIDGET_COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -64,6 +72,11 @@ pub struct VideoWidget {
 
     // Provide the pipeline with our WidgetId so it can target redraws
     shared_widget_id: Arc<Mutex<Option<WidgetId>>>,
+    frame_ready_pending: Arc<AtomicBool>,
+    paused_refresh_requested: Arc<AtomicBool>,
+    playback_active: Arc<AtomicBool>,
+    worker_alive: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
 
     style_width: Option<f64>,
     style_height: Option<f64>,
@@ -88,10 +101,29 @@ impl VideoWidget {
 
         let (dim_tx, dim_rx) = channel();
 
-        let overlay_clone = overlay_key.clone();
         let shared_widget_id = Arc::new(Mutex::new(None));
+        let frame_ready_pending = Arc::new(AtomicBool::new(false));
+        let paused_refresh_requested = Arc::new(AtomicBool::new(true));
+        let playback_active = Arc::new(AtomicBool::new(true));
 
-        let pipeline = Self::build_pipeline(&uri, overlay_clone, dim_tx, shared_widget_id.clone());
+        let runtime = Self::build_pipeline(
+            &uri,
+            dim_tx,
+            shared_widget_id.clone(),
+            frame_ready_pending.clone(),
+            paused_refresh_requested.clone(),
+            playback_active.clone(),
+        );
+
+        let (pipeline, worker_alive, worker) = if let Some(runtime) = runtime {
+            (
+                Some(runtime.pipeline),
+                runtime.worker_alive,
+                Some(runtime.worker),
+            )
+        } else {
+            (None, Arc::new(AtomicBool::new(false)), None)
+        };
 
         Self {
             pipeline,
@@ -101,6 +133,11 @@ impl VideoWidget {
             video_width: 0,
             video_height: 0,
             shared_widget_id,
+            frame_ready_pending,
+            paused_refresh_requested,
+            playback_active,
+            worker_alive,
+            worker,
             style_width: None,
             style_height: None,
             last_size: Size::ZERO,
@@ -120,6 +157,11 @@ impl VideoWidget {
             video_width: 0,
             video_height: 0,
             shared_widget_id: Arc::new(Mutex::new(None)),
+            frame_ready_pending: Arc::new(AtomicBool::new(false)),
+            paused_refresh_requested: Arc::new(AtomicBool::new(true)),
+            playback_active: Arc::new(AtomicBool::new(false)),
+            worker_alive: Arc::new(AtomicBool::new(false)),
+            worker: None,
             style_width: None,
             style_height: None,
             last_size: Size::ZERO,
@@ -154,10 +196,12 @@ impl VideoWidget {
     /// Build the GStreamer pipeline
     fn build_pipeline(
         uri: &str,
-        _overlay_key: ImageData,
         dim_tx: std::sync::mpsc::Sender<(u32, u32, ImageData)>,
         shared_id: Arc<Mutex<Option<WidgetId>>>,
-    ) -> Option<gst::Element> {
+        frame_ready_pending: Arc<AtomicBool>,
+        paused_refresh_requested: Arc<AtomicBool>,
+        playback_active: Arc<AtomicBool>,
+    ) -> Option<VideoPipelineRuntime> {
         let pipeline = gst::ElementFactory::make("playbin")
             .property("uri", uri)
             .build();
@@ -195,104 +239,191 @@ impl VideoWidget {
 
         appsink.set_max_buffers(1);
         appsink.set_drop(true);
+        appsink.set_property("enable-last-sample", false);
 
-        // Persistent texture state for the appsink thread
-        let mut wgpu_texture: Option<Arc<wgpu::Texture>> = None;
+        let worker_alive = Arc::new(AtomicBool::new(true));
+        let worker_alive_for_thread = worker_alive.clone();
 
-        appsink.set_callbacks(
-            gst_app::AppSinkCallbacks::builder()
-                .new_sample(move |appsink| {
-                    let sample = appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
-                    let buffer = sample.buffer().ok_or(gst::FlowError::Error)?;
-                    let caps = sample.caps().ok_or(gst::FlowError::Error)?;
-                    let video_info =
-                        gst_video::VideoInfo::from_caps(caps).map_err(|_| gst::FlowError::Error)?;
+        let appsink_for_thread = appsink.clone();
+        let shared_id_for_thread = shared_id.clone();
+        let frame_ready_pending_for_thread = frame_ready_pending.clone();
+        let paused_refresh_requested_for_thread = paused_refresh_requested.clone();
+        let playback_active_for_thread = playback_active.clone();
+        let dim_tx_for_thread = dim_tx.clone();
 
-                    let width = video_info.width();
-                    let height = video_info.height();
+        let worker = std::thread::spawn(move || {
+            // Persistent texture state for the worker thread
+            let mut wgpu_texture: Option<Arc<wgpu::Texture>> = None;
+            let mut cached_wgpu_context = get_wgpu_context();
+            let mut cached_proxy_context = get_event_loop_proxy();
+            let mut paused_frame_uploaded = false;
 
-                    // If we don't have a texture yet, or it's the wrong size, create a new one!
-                    if wgpu_texture.is_none()
-                        || wgpu_texture.as_ref().unwrap().width() != width
-                        || wgpu_texture.as_ref().unwrap().height() != height
-                    {
-                        let wgpu_cx_opt = get_wgpu_context();
-                        let proxy_cx_opt = get_event_loop_proxy();
+            while worker_alive_for_thread.load(Ordering::Acquire) {
+                let is_playing = playback_active_for_thread.load(Ordering::Acquire);
 
-                        if let (Some(wgpu_cx), Some((proxy, win_id))) = (wgpu_cx_opt, proxy_cx_opt)
-                        {
-                            let texture_desc = wgpu::TextureDescriptor {
-                                size: wgpu::Extent3d {
-                                    width,
-                                    height,
-                                    depth_or_array_layers: 1,
-                                },
-                                mip_level_count: 1,
-                                sample_count: 1,
-                                dimension: wgpu::TextureDimension::D2,
-                                format: wgpu::TextureFormat::Rgba8Unorm,
-                                usage: wgpu::TextureUsages::COPY_DST
-                                    | wgpu::TextureUsages::TEXTURE_BINDING
-                                    | wgpu::TextureUsages::COPY_SRC,
-                                label: Some("VideoWidget_Texture"),
-                                view_formats: &[],
-                            };
+                if is_playing {
+                    paused_frame_uploaded = false;
+                } else if paused_frame_uploaded {
+                    if paused_refresh_requested_for_thread.swap(false, Ordering::AcqRel) {
+                        paused_frame_uploaded = false;
+                    }
+                }
 
-                            let tex = Arc::new(wgpu_cx.device.create_texture(&texture_desc));
-                            wgpu_texture = Some(tex.clone());
+                if !is_playing && paused_frame_uploaded {
+                    std::thread::sleep(Duration::from_millis(16));
+                    continue;
+                }
 
-                            let new_overlay = create_unique_overlay_key(width, height);
-                            let _ = dim_tx.send((width, height, new_overlay.clone()));
+                let sample = if is_playing {
+                    appsink_for_thread.try_pull_sample(gst::ClockTime::from_mseconds(16))
+                } else {
+                    appsink_for_thread.try_pull_preroll(gst::ClockTime::from_mseconds(16))
+                };
 
-                            // Send SetOverride action using EventLoopProxy
-                            let action = VideoAction::SetOverride(new_overlay, tex);
-                            let erased: ErasedAction = Box::new(action);
-                            let _ = proxy.send_event(MasonryUserEvent::AsyncAction(win_id, erased));
-                        }
+                let Some(sample) = sample else {
+                    continue;
+                };
+
+                let Some(buffer) = sample.buffer() else {
+                    continue;
+                };
+                let Some(caps) = sample.caps() else {
+                    continue;
+                };
+                let Ok(video_info) = gst_video::VideoInfo::from_caps(caps) else {
+                    continue;
+                };
+
+                let width = video_info.width();
+                let height = video_info.height();
+
+                // If we don't have a texture yet, or it's the wrong size, create a new one.
+                if wgpu_texture.is_none()
+                    || wgpu_texture
+                        .as_ref()
+                        .is_some_and(|tex| tex.width() != width)
+                    || wgpu_texture
+                        .as_ref()
+                        .is_some_and(|tex| tex.height() != height)
+                {
+                    if cached_wgpu_context.is_none() {
+                        cached_wgpu_context = get_wgpu_context();
+                    }
+                    if cached_proxy_context.is_none() {
+                        cached_proxy_context = get_event_loop_proxy();
                     }
 
-                    // Write GStreamer CPU buffer into WGPU Texture
-                    if let (Some(tex), Some(wgpu_cx)) = (&wgpu_texture, get_wgpu_context()) {
-                        let map = buffer.map_readable().map_err(|_| gst::FlowError::Error)?;
-                        let data = map.as_slice();
-
-                        wgpu_cx.queue.write_texture(
-                            masonry::vello::wgpu::TexelCopyTextureInfo {
-                                texture: tex,
-                                mip_level: 0,
-                                origin: wgpu::Origin3d::ZERO,
-                                aspect: wgpu::TextureAspect::All,
-                            },
-                            data,
-                            masonry::vello::wgpu::TexelCopyBufferLayout {
-                                offset: 0,
-                                bytes_per_row: Some(4 * width),
-                                rows_per_image: Some(height),
-                            },
-                            wgpu::Extent3d {
+                    if let (Some(wgpu_cx), Some((proxy, win_id))) =
+                        (cached_wgpu_context.as_ref(), cached_proxy_context.as_ref())
+                    {
+                        let texture_desc = wgpu::TextureDescriptor {
+                            size: wgpu::Extent3d {
                                 width,
                                 height,
                                 depth_or_array_layers: 1,
                             },
-                        );
+                            mip_level_count: 1,
+                            sample_count: 1,
+                            dimension: wgpu::TextureDimension::D2,
+                            format: wgpu::TextureFormat::Rgba8Unorm,
+                            usage: wgpu::TextureUsages::COPY_DST
+                                | wgpu::TextureUsages::TEXTURE_BINDING
+                                | wgpu::TextureUsages::COPY_SRC,
+                            label: Some("VideoWidget_Texture"),
+                            view_formats: &[],
+                        };
 
-                        // Wake the UI to redraw if we know the WidgetId
-                        if let Ok(id_lock) = shared_id.lock()
-                            && let Some(id) = *id_lock
-                            && let Some((proxy, win_id)) = get_event_loop_proxy()
-                        {
+                        let tex = Arc::new(wgpu_cx.device.create_texture(&texture_desc));
+                        wgpu_texture = Some(tex.clone());
+
+                        let new_overlay = create_unique_overlay_key(width, height);
+                        let _ = dim_tx_for_thread.send((width, height, new_overlay.clone()));
+
+                        let action = VideoAction::SetOverride(new_overlay, tex);
+                        let erased: ErasedAction = Box::new(action);
+                        let _ = proxy.send_event(MasonryUserEvent::AsyncAction(*win_id, erased));
+                    }
+                }
+
+                if cached_wgpu_context.is_none() {
+                    cached_wgpu_context = get_wgpu_context();
+                }
+
+                if let (Some(tex), Some(wgpu_cx)) = (&wgpu_texture, cached_wgpu_context.as_ref()) {
+                    // Backpressure: if a repaint is already pending, skip this frame upload.
+                    // This bounds CPU->GPU transfer work to the UI consumption rate.
+                    if frame_ready_pending_for_thread.load(Ordering::Acquire) {
+                        continue;
+                    }
+
+                    let Ok(map) = buffer.map_readable() else {
+                        continue;
+                    };
+                    let data = map.as_slice();
+                    let min_row_bytes = width.saturating_mul(4);
+                    let stride_bytes = buffer
+                        .meta::<gst_video::VideoMeta>()
+                        .map(|meta| meta.stride()[0] as u32)
+                        .filter(|stride| *stride >= min_row_bytes)
+                        .unwrap_or(min_row_bytes);
+
+                    wgpu_cx.queue.write_texture(
+                        masonry::vello::wgpu::TexelCopyTextureInfo {
+                            texture: tex,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        data,
+                        masonry::vello::wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(stride_bytes),
+                            rows_per_image: Some(height),
+                        },
+                        wgpu::Extent3d {
+                            width,
+                            height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+
+                    // Wake the UI to redraw if we know the WidgetId
+                    if let Ok(id_lock) = shared_id_for_thread.lock()
+                        && let Some(id) = *id_lock
+                        && !frame_ready_pending_for_thread.swap(true, Ordering::AcqRel)
+                    {
+                        if cached_proxy_context.is_none() {
+                            cached_proxy_context = get_event_loop_proxy();
+                        }
+                        if let Some((proxy, win_id)) = cached_proxy_context.as_ref() {
                             let action = VideoAction::FrameReady(id);
                             let erased: ErasedAction = Box::new(action);
-                            let _ = proxy.send_event(MasonryUserEvent::AsyncAction(win_id, erased));
+                            let _ =
+                                proxy.send_event(MasonryUserEvent::AsyncAction(*win_id, erased));
+                        } else {
+                            frame_ready_pending_for_thread.store(false, Ordering::Release);
                         }
                     }
 
-                    Ok(gst::FlowSuccess::Ok)
-                })
-                .build(),
-        );
+                    if !is_playing {
+                        paused_frame_uploaded = true;
+                    }
+                }
+            }
+        });
 
-        Some(pipeline)
+        Some(VideoPipelineRuntime {
+            pipeline,
+            worker_alive,
+            worker,
+        })
+    }
+
+    fn stop_worker(&mut self) {
+        self.worker_alive.store(false, Ordering::Release);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
     }
 
     /// Start playback.
@@ -306,6 +437,7 @@ impl VideoWidget {
 
     /// Stop playback and clean up.
     fn stop_playback(&mut self) {
+        self.stop_worker();
         if let Some(ref pipeline) = self.pipeline {
             let _ = pipeline.set_state(gst::State::Null);
         }
@@ -337,6 +469,9 @@ impl VideoWidget {
     }
 
     pub fn on_frame_ready(this: &mut WidgetMut<'_, Self>) {
+        this.widget
+            .frame_ready_pending
+            .store(false, Ordering::Release);
         let dimensions_changed = this.widget.drain_pending_dimensions_impl();
         if dimensions_changed {
             this.ctx.request_layout();
@@ -378,13 +513,37 @@ impl VideoWidget {
             let uri = Self::normalize_uri(src);
 
             let (dim_tx, dim_rx) = channel();
-            let overlay_clone = this.widget.overlay_key.clone();
             let shared_id_clone = this.widget.shared_widget_id.clone();
+            let frame_ready_pending_clone = this.widget.frame_ready_pending.clone();
+            let paused_refresh_requested_clone = this.widget.paused_refresh_requested.clone();
+            let playback_active_clone = this.widget.playback_active.clone();
 
-            let pipeline = Self::build_pipeline(&uri, overlay_clone, dim_tx, shared_id_clone);
+            let runtime = Self::build_pipeline(
+                &uri,
+                dim_tx,
+                shared_id_clone,
+                frame_ready_pending_clone,
+                paused_refresh_requested_clone,
+                playback_active_clone,
+            );
 
-            this.widget.pipeline = pipeline;
+            if let Some(runtime) = runtime {
+                this.widget.pipeline = Some(runtime.pipeline);
+                this.widget.worker_alive = runtime.worker_alive;
+                this.widget.worker = Some(runtime.worker);
+            } else {
+                this.widget.pipeline = None;
+                this.widget.worker_alive = Arc::new(AtomicBool::new(false));
+                this.widget.worker = None;
+            }
             this.widget.dim_receiver = Some(dim_rx);
+            this.widget
+                .frame_ready_pending
+                .store(false, Ordering::Release);
+            this.widget
+                .paused_refresh_requested
+                .store(true, Ordering::Release);
+            this.widget.playback_active.store(false, Ordering::Release);
             this.widget.started = false;
         }
 
@@ -394,6 +553,10 @@ impl VideoWidget {
 
     pub fn play(this: &mut WidgetMut<'_, Self>) {
         this.widget.started = true;
+        this.widget.playback_active.store(true, Ordering::Release);
+        this.widget
+            .paused_refresh_requested
+            .store(true, Ordering::Release);
         if let Some(ref pipeline) = this.widget.pipeline
             && let Err(e) = pipeline.set_state(gst::State::Playing)
         {
@@ -403,6 +566,10 @@ impl VideoWidget {
 
     pub fn pause(this: &mut WidgetMut<'_, Self>) {
         this.widget.started = false;
+        this.widget.playback_active.store(false, Ordering::Release);
+        this.widget
+            .paused_refresh_requested
+            .store(true, Ordering::Release);
         if let Some(ref pipeline) = this.widget.pipeline
             && let Err(e) = pipeline.set_state(gst::State::Paused)
         {
@@ -411,6 +578,9 @@ impl VideoWidget {
     }
 
     pub fn seek(this: &mut WidgetMut<'_, Self>, time_secs: f64) {
+        this.widget
+            .paused_refresh_requested
+            .store(true, Ordering::Release);
         if let Some(ref pipeline) = this.widget.pipeline {
             let time = gst::ClockTime::from_nseconds((time_secs * 1_000_000_000.0) as u64);
             if pipeline
@@ -427,6 +597,10 @@ impl VideoWidget {
 impl Drop for VideoWidget {
     fn drop(&mut self) {
         self.stop_playback();
+        self.frame_ready_pending.store(false, Ordering::Release);
+        if let Ok(mut id_lock) = self.shared_widget_id.lock() {
+            *id_lock = None;
+        }
         if let Some((proxy, win_id)) = get_event_loop_proxy() {
             let action = VideoAction::ClearOverride(self.overlay_key.clone());
             let erased: ErasedAction = Box::new(action);

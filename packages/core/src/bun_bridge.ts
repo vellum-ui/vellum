@@ -20,8 +20,8 @@ function findVellumBinary(): string {
     }
 
     const searchPaths = [
-        path.join(process.cwd(), "target", "debug", exeName),
         path.join(process.cwd(), "target", "release", exeName),
+        path.join(process.cwd(), "target", "debug", exeName),
         path.join(process.cwd(), exeName),
     ];
 
